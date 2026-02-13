@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Streamlit
+.streamlit/
+
+# Database
+data/*.db
+data/*.db-journal
+data/*.db-wal
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs
+*.docx
+!docs/UI_Application_Design_Specification.docx
