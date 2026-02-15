@@ -1,22 +1,14 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-venv/
+# General
+node_modules/
+dist/
+build/
 .env
 
-# Streamlit
-.streamlit/
+# Backend
+backend/node_modules/
+backend/.env
 
-# Database
-data/*.db
-data/*.db-journal
-data/*.db-wal
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Docs
-*.docx
-!docs/UI_Application_Design_Specification.docx
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env

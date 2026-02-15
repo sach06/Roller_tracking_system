@@ -1,40 +1,67 @@
-# Roller Tracking System
+# Roller Tracking System (Node.js + React + SQL Server)
 
 ## Overview
-The Roller Tracking System is a web application designed to support roller, sleeve, and axle tracking across disassembly, processing, workshop, and outgoing stages. It replaces manual and Excel-based tracking systems, providing a unified and efficient way to manage asset movement and status.
-
-## Features
-- **Disassembly Tracking**: Record details of rollers and sleeves after disassembly.
-- **Processing Management**: Track assets through refurbishment and assembly.
-- **Workshop Operations**: Manage workshop data and delivery to customers.
-- **Scrap Management**: Efficiently log scrapped rollers, sleeves, and axles.
-- **Role-Based Access**: Specialized views for Refurbishment and Workshop operators/administrators.
+The Roller Tracking System is a web application designed to support roller, sleeve, and axle tracking across disassembly, processing, workshop, and outgoing stages. It replaces manual and Excel-based tracking systems.
 
 ## Tech Stack
-- **Frontend**: Streamlit
-- **Backend/Storage**: DuckDB + Pandas
-- **Language**: Python
+- **Frontend**: React (Vite)
+- **Backend**: Node.js (Express)
+- **Database**: SQL Server
+- **Auth**: Windows Authentication (Native Driver) or SQL Auth (Fallback)
+
+## Prerequisites
+- Node.js (v16+)
+- SQL Server (Developer/Express edition)
+- Git
 
 ## Installation
-1. Clone the repository:
+
+### 1. Database Setup
+1. Open SQL Server Management Studio (SSMS).
+2. Connect to your SQL Server instance (e.g., `SPHILSQL15\SQLTST153`).
+3. Open `db/schema.sql` and execute the script to create the `RollerTrackingDB` (or within your existing DB) and necessary tables.
+
+### 2. Backend Setup
+1. Navigate to the backend directory:
    ```bash
-   git clone https://github.com/sach06/Roller_tracking_system.git
-   cd Roller_tracking_system
+   cd backend
    ```
 2. Install dependencies:
    ```bash
-   pip install -r requirements.txt
+   npm install
    ```
-3. Run the application:
+3. Configure environment variables in `.env`:
+   ```ini
+   DB_SERVER=SPHILSQL15\SQLTST153
+   DB_DATABASE=RollerTrackingDB
+   ```
+4. Start the server:
    ```bash
-   streamlit run app/main.py
+   npm start
    ```
+   Server runs on `http://localhost:3001`
+
+### 3. Frontend Setup
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the development server:
+   ```bash
+   npm run dev
+   ```
+   App runs on `http://localhost:3000`
+
+## User Roles (Default Data)
+- **Admin**: `admin` / `admin123` (Refurbishment Admin)
+- **Refurbishment Operator**: `ref_user` / `pass123`
+- **Workshop Operator**: `ws_user` / `pass123`
 
 ## Project Structure
-- `app/`: Main application code
-  - `ui/`: Streamlit pages and UI components
-  - `services/`: Business logic and data management
-  - `core/`: Configuration and shared utilities
-- `data/`: Local storage for DuckDB and exports
-- `docs/`: Design specifications and documentation
-- `scripts/`: Helper scripts
+- `backend/`: Express API handling SQL Server connection logic.
+- `frontend/`: React application using Vite.
+- `db/`: SQL scripts for database schema.
