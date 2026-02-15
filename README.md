@@ -13,55 +13,41 @@ The Roller Tracking System is a web application designed to support roller, slee
 - Node.js (v16+)
 - SQL Server (Developer/Express edition)
 - Git
+- Docker (Optional)
 
-## Installation
+## Installation & Running
 
-### 1. Database Setup
-1. Open SQL Server Management Studio (SSMS).
-2. Connect to your SQL Server instance (e.g., `SPHILSQL15\SQLTST153`).
-3. Open `db/schema.sql` and execute the script to create the `RollerTrackingDB` (or within your existing DB) and necessary tables.
+### Option 1: Local Setup (Recommended for Windows Auth)
+1. **Database Setup**:
+   - Open SSMS and execute `db/schema.sql`.
+   - Ensure you can connect to your SQL Server instance (e.g. `SPHILSQL15\SQLTST153`).
 
-### 2. Backend Setup
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Configure environment variables in `.env`:
-   ```ini
-   DB_SERVER=SPHILSQL15\SQLTST153
-   DB_DATABASE=RollerTrackingDB
-   ```
-4. Start the server:
-   ```bash
-   npm start
-   ```
-   Server runs on `http://localhost:3001`
+2. **Run Diagnostic Check**:
+   - Double-click `diagnose.bat` to verify if Node.js and npm are installed correctly. If not, please install Node.js from [nodejs.org](https://nodejs.org/).
 
-### 3. Frontend Setup
-1. Navigate to the frontend directory:
+3. **Start Application**:
+   - Double-click `start_app.bat`. This will:
+     - Install backend dependencies and start the server.
+     - Install frontend dependencies and start the dev server.
+   - Access the app at `http://localhost:3000`.
+
+### Option 2: Docker Setup
+1. **Run with Docker Compose**:
    ```bash
-   cd frontend
+   docker-compose up --build
    ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the development server:
-   ```bash
-   npm run dev
-   ```
-   App runs on `http://localhost:3000`
+   **Note**: For SQL Server Windows Authentication to work inside a Linux container, you might need additional configuration or use SQL Authentication instead by setting `DB_USER` and `DB_PASSWORD` in `docker-compose.yml`.
+
+## Troubleshooting
+- **Frontend not starting?**
+  - Make sure port 3000 is free.
+  - Check the terminal output for errors (e.g., `npm install` failing).
+  - Try running `npm install` manually inside the `frontend` folder.
+- **Backend connection failed?**
+  - Verify SQL Server is running and accessible.
+  - Check `.env` settings in `backend/`.
 
 ## User Roles (Default Data)
 - **Admin**: `admin` / `admin123` (Refurbishment Admin)
 - **Refurbishment Operator**: `ref_user` / `pass123`
 - **Workshop Operator**: `ws_user` / `pass123`
-
-## Project Structure
-- `backend/`: Express API handling SQL Server connection logic.
-- `frontend/`: React application using Vite.
-- `db/`: SQL scripts for database schema.
