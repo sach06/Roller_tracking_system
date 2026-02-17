@@ -1,7 +1,5 @@
 # Roller Tracking System (Node.js + React + SQL Server)
 
-# test
-
 ## Overview
 
 The Roller Tracking System is a web application designed to support roller, sleeve, and axle tracking across disassembly, processing, workshop, and outgoing stages. It replaces manual and Excel-based tracking systems.
