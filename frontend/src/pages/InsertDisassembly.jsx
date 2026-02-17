@@ -360,7 +360,7 @@ const InsertDisassembly = () => {
                         >
                             <option value="">-- Select --</option>
                             {casterOptions.map((caster, idx) => (
-                                <option key={idx} value={caster.caster_name}>
+                                <option key={idx} value={caster.caster_id}>
                                     {caster.caster_name}
                                 </option>
                             ))}

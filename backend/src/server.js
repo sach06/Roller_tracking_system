@@ -101,11 +101,12 @@ app.get('/api/casters', async (req, res) => {
     try {
         const pool = await getPool();
         const result = await pool.request()
-            .input('siteId', sql.NVarChar, req.query.site)
-            .query(`SELECT caster_name 
-                    FROM [roller_tracking].[caster] 
-                    WHERE site_id = @siteId AND is_active = 1 
-                    ORDER BY caster_name`);
+            .input('siteName', sql.NVarChar, req.query.site)
+            .query(`SELECT c.caster_id, c.caster_name, c.caster_code
+                    FROM [roller_tracking].[caster] c
+                    JOIN [roller_tracking].[site] s ON c.site_id = s.site_id
+                    WHERE s.site_name = @siteName AND c.is_active = 1 
+                    ORDER BY c.caster_name`);
         res.json({ success: true, casters: result.recordset });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
