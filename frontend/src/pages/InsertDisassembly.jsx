@@ -25,7 +25,6 @@ const InsertDisassembly = () => {
     const [segmentIdOptions, setSegmentIdOptions] = useState([]);
 
     const [casterId, setCasterId] = useState('');
-    const [casterClusterId, setCasterClusterId] = useState('');
     const [strandId, setStrandId] = useState('');
     const [segmentPosition, setSegmentPosition] = useState('');
     const [segmentId, setSegmentId] = useState('');
@@ -70,12 +69,8 @@ const InsertDisassembly = () => {
     useEffect(() => {
         if (casterId) {
             fetchStrands(casterId);
-            // Fetch segments when caster is selected
-            if (casterClusterId) {
-                fetchSegmentIds();
-            }
         }
-    }, [casterId, casterClusterId]);
+    }, [casterId]);
 
     useEffect(() => {
         if (strandId) {
@@ -83,7 +78,11 @@ const InsertDisassembly = () => {
         }
     }, [strandId]);
 
-    // Removed - segments now loaded when caster is selected
+    useEffect(() => {
+        if (segmentPosition) {
+            fetchSegmentIds(segmentPosition);
+        }
+    }, [segmentPosition]);
 
     const fetchExistingRollers = async () => {
         try {
@@ -141,12 +140,13 @@ const InsertDisassembly = () => {
         }
     };
 
-    const fetchSegmentIds = async () => {
+    const fetchSegmentIds = async (position) => {
         try {
-            if (!casterClusterId) return;
+            if (!strandId) return;
             const response = await axios.get('/api/segment-ids', {
                 params: {
-                    casterClusterId: casterClusterId
+                    strandId: strandId,
+                    positionNo: position
                 }
             });
             if (response.data.success) {
@@ -361,15 +361,7 @@ const InsertDisassembly = () => {
                         <label>Caster ID</label>
                         <select
                             value={casterId}
-                            onChange={(e) => {
-                                const selectedCasterId = e.target.value;
-                                setCasterId(selectedCasterId);
-                                // Find the selected caster and store its cluster ID
-                                const selectedCaster = casterOptions.find(c => c.caster_id == selectedCasterId);
-                                if (selectedCaster) {
-                                    setCasterClusterId(selectedCaster.caster_cluster_id);
-                                }
-                            }}
+                            onChange={(e) => setCasterId(e.target.value)}
                             className={errors.casterId ? 'error' : ''}
                         >
                             <option value="">-- Select --</option>
@@ -428,7 +420,7 @@ const InsertDisassembly = () => {
                         >
                             <option value="">-- Select --</option>
                             {segmentIdOptions.map((seg, idx) => (
-                                <option key={idx} value={seg.segment_id}>
+                                <option key={idx} value={seg.segment_no}>
                                     {seg.segment_no}
                                 </option>
                             ))}

@@ -145,16 +145,22 @@ app.get('/api/segment-positions', async (req, res) => {
     }
 });
 
-// Get segment IDs for a caster
+// Get segment IDs for a position
 app.get('/api/segment-ids', async (req, res) => {
     try {
         const pool = await getPool();
         const result = await pool.request()
-            .input('casterClusterId', sql.Int, req.query.casterClusterId)
-            .query(`SELECT segment_id, segment_no
-                    FROM [roller_tracking].[segment]
-                    WHERE caster_cluster_id = @casterClusterId
-                    ORDER BY segment_no`);
+            .input('strandId', sql.Int, req.query.strandId)
+            .input('positionNo', sql.NVarChar, req.query.positionNo)
+            .query(`SELECT s.segment_no
+                    FROM [roller_tracking].[position] p
+                    JOIN [roller_tracking].[segment_position_rule] spr
+                        ON spr.position_id = p.position_id
+                    JOIN [roller_tracking].[segment] s
+                        ON s.segment_id = spr.segment_id
+                    WHERE p.strand_id = @strandId
+                      AND p.position_no = @positionNo
+                    ORDER BY s.segment_no`);
         res.json({ success: true, segments: result.recordset });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
