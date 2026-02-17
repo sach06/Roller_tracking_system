@@ -15,7 +15,7 @@ if (useNativeDriver) {
     const port = process.env.DB_PORT || '55003';
     const database = process.env.DB_DATABASE || 'RollerTrackingDB';
 
-    const CONNECTION_STRING = `Driver={ODBC Driver 17 for SQL Server};Server=${server},${port};Database=${database};Trusted_Connection=Yes;TrustServerCertificate=Yes;Login Timeout=30;`;
+    const CONNECTION_STRING = `Driver={ODBC Driver 18 for SQL Server};Server=${server},${port};Database=${database};Trusted_Connection=Yes;TrustServerCertificate=Yes;Login Timeout=30;`;
     dbConfig = { connectionString: CONNECTION_STRING };
     console.log('🔌 Using Windows Auth for:', server);
 } else {
