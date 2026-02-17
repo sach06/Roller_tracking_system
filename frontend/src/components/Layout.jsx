@@ -26,6 +26,9 @@ const Layout = () => {
             <aside className="sidebar">
                 <h2>Roller Tracker</h2>
                 <nav>
+                    <NavLink to="/main" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
+                        📋 Main Page
+                    </NavLink>
                     <NavLink to="/dashboard" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
                         🏠 Dashboard
                     </NavLink>

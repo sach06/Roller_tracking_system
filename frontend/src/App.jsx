@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Login from './pages/Login';
+import MainPage from './pages/MainPage';
 import Dashboard from './pages/Dashboard';
 import Disassembly from './pages/Disassembly';
 import Processing from './pages/Processing';
@@ -14,12 +15,15 @@ function App() {
             <Routes>
                 <Route path="/login" element={<Login />} />
                 <Route element={<Layout />}>
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    <Route path="/" element={<Navigate to="/main" replace />} />
+                    <Route path="/main" element={<MainPage />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/disassembly" element={<Disassembly />} />
                     <Route path="/processing" element={<Processing />} />
                     <Route path="/workshop" element={<Workshop />} />
                     <Route path="/scrap" element={<Scrap />} />
+                    <Route path="/scrap-roller" element={<Scrap />} />
+                    <Route path="/scrap-axle" element={<Scrap />} />
                 </Route>
             </Routes>
         </BrowserRouter>

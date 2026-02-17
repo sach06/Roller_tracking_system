@@ -35,7 +35,7 @@ const Login = () => {
             if (response.data.success) {
                 const userData = { ...response.data.user, site: selectedSite };
                 localStorage.setItem('user', JSON.stringify(userData));
-                navigate('/dashboard');
+                navigate('/main');
             }
         } catch (err) {
             setError('Invalid credentials');
