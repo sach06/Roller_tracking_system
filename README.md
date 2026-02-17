@@ -1,15 +1,20 @@
 # Roller Tracking System (Node.js + React + SQL Server)
 
+# test
+
 ## Overview
+
 The Roller Tracking System is a web application designed to support roller, sleeve, and axle tracking across disassembly, processing, workshop, and outgoing stages. It replaces manual and Excel-based tracking systems.
 
 ## Tech Stack
+
 - **Frontend**: React (Vite)
 - **Backend**: Node.js (Express)
 - **Database**: SQL Server
 - **Auth**: Windows Authentication (Native Driver) or SQL Auth (Fallback)
 
 ## Prerequisites
+
 - Node.js (v16+)
 - SQL Server (Developer/Express edition)
 - Git
@@ -18,6 +23,7 @@ The Roller Tracking System is a web application designed to support roller, slee
 ## Installation & Running
 
 ### Option 1: Local Setup (Recommended for Windows Auth)
+
 1. **Database Setup**:
    - Open SSMS and execute `db/schema.sql`.
    - Ensure you can connect to your SQL Server instance (e.g. `SPHILSQL15\SQLTST153`).
@@ -32,6 +38,7 @@ The Roller Tracking System is a web application designed to support roller, slee
    - Access the app at `http://localhost:3000`.
 
 ### Option 2: Docker Setup
+
 1. **Run with Docker Compose**:
    ```bash
    docker-compose up --build
@@ -39,6 +46,7 @@ The Roller Tracking System is a web application designed to support roller, slee
    **Note**: For SQL Server Windows Authentication to work inside a Linux container, you might need additional configuration or use SQL Authentication instead by setting `DB_USER` and `DB_PASSWORD` in `docker-compose.yml`.
 
 ## Troubleshooting
+
 - **Frontend not starting?**
   - Make sure port 3000 is free.
   - Check the terminal output for errors (e.g., `npm install` failing).
@@ -48,6 +56,7 @@ The Roller Tracking System is a web application designed to support roller, slee
   - Check `.env` settings in `backend/`.
 
 ## User Roles (Default Data)
+
 - **Admin**: `admin` / `admin123` (Refurbishment Admin)
 - **Refurbishment Operator**: `ref_user` / `pass123`
 - **Workshop Operator**: `ws_user` / `pass123`
