@@ -164,7 +164,8 @@ const InsertDisassembly = () => {
         if (!configuration) newErrors.configuration = 'Required';
         if (!incomingRollerPosition) newErrors.incomingRollerPosition = 'Required';
         if (!hasBreakout) newErrors.hasBreakout = 'Required';
-        if (!haveJournal) newErrors.haveJournal = 'Required';
+        // Have Journal only required for Roller type, not Sleeve
+        if (rollerType === 'Roller' && !haveJournal) newErrors.haveJournal = 'Required';
 
         // Validate diameter range
         if (incomingDiameterA && (parseFloat(incomingDiameterA) < 95 || parseFloat(incomingDiameterA) > 200)) {
@@ -174,8 +175,8 @@ const InsertDisassembly = () => {
             newErrors.incomingDiameterB = 'Must be between 95-200 mm';
         }
 
-        // Journal fields required if haveJournal is Yes
-        if (haveJournal === 'Yes') {
+        // Journal fields required if haveJournal is Yes (only for Roller type)
+        if (rollerType === 'Roller' && haveJournal === 'Yes') {
             if (!journalDiameterA) newErrors.journalDiameterA = 'Required when journal is Yes';
             if (!journalDiameterB) newErrors.journalDiameterB = 'Required when journal is Yes';
         }
@@ -515,49 +516,52 @@ const InsertDisassembly = () => {
                     </div>
                 </div>
 
-                <div className="section-row">
-                    <div className="field-group pink-field">
-                        <label>Have Journal (Y/N)</label>
-                        <select
-                            value={haveJournal}
-                            onChange={(e) => setHaveJournal(e.target.value)}
-                            className={errors.haveJournal ? 'error' : ''}
-                        >
-                            <option value="">-- Select --</option>
-                            <option value="Yes">Yes</option>
-                            <option value="No">No</option>
-                        </select>
-                        {errors.haveJournal && <span className="error-text">{errors.haveJournal}</span>}
+                {/* Have Journal - Only show for Roller type, not Sleeve */}
+                {rollerType === 'Roller' && (
+                    <div className="section-row">
+                        <div className="field-group pink-field">
+                            <label>Have Journal (Y/N)</label>
+                            <select
+                                value={haveJournal}
+                                onChange={(e) => setHaveJournal(e.target.value)}
+                                className={errors.haveJournal ? 'error' : ''}
+                            >
+                                <option value="">-- Select --</option>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
+                            {errors.haveJournal && <span className="error-text">{errors.haveJournal}</span>}
+                        </div>
+                        {haveJournal === 'Yes' && (
+                            <>
+                                <div className="field-group white-field">
+                                    <label>Journal Diameter (A)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={journalDiameterA}
+                                        onChange={(e) => setJournalDiameterA(e.target.value)}
+                                        placeholder="Enter diameter"
+                                        className={errors.journalDiameterA ? 'error' : ''}
+                                    />
+                                    {errors.journalDiameterA && <span className="error-text">{errors.journalDiameterA}</span>}
+                                </div>
+                                <div className="field-group white-field">
+                                    <label>Journal Diameter (B)</label>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={journalDiameterB}
+                                        onChange={(e) => setJournalDiameterB(e.target.value)}
+                                        placeholder="Enter diameter"
+                                        className={errors.journalDiameterB ? 'error' : ''}
+                                    />
+                                    {errors.journalDiameterB && <span className="error-text">{errors.journalDiameterB}</span>}
+                                </div>
+                            </>
+                        )}
                     </div>
-                    {haveJournal === 'Yes' && (
-                        <>
-                            <div className="field-group white-field">
-                                <label>Journal Diameter (A)</label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={journalDiameterA}
-                                    onChange={(e) => setJournalDiameterA(e.target.value)}
-                                    placeholder="Enter diameter"
-                                    className={errors.journalDiameterA ? 'error' : ''}
-                                />
-                                {errors.journalDiameterA && <span className="error-text">{errors.journalDiameterA}</span>}
-                            </div>
-                            <div className="field-group white-field">
-                                <label>Journal Diameter (B)</label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={journalDiameterB}
-                                    onChange={(e) => setJournalDiameterB(e.target.value)}
-                                    placeholder="Enter diameter"
-                                    className={errors.journalDiameterB ? 'error' : ''}
-                                />
-                                {errors.journalDiameterB && <span className="error-text">{errors.journalDiameterB}</span>}
-                            </div>
-                        </>
-                    )}
-                </div>
+                )}
 
                 {/* Axle ID for Sleeve */}
                 {rollerType === 'Sleeve' && (
