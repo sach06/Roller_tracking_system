@@ -25,6 +25,7 @@ const InsertDisassembly = () => {
     const [segmentIdOptions, setSegmentIdOptions] = useState([]);
 
     const [casterId, setCasterId] = useState('');
+    const [casterClusterId, setCasterClusterId] = useState('');
     const [strandId, setStrandId] = useState('');
     const [segmentPosition, setSegmentPosition] = useState('');
     const [segmentId, setSegmentId] = useState('');
@@ -69,8 +70,12 @@ const InsertDisassembly = () => {
     useEffect(() => {
         if (casterId) {
             fetchStrands(casterId);
+            // Fetch segments when caster is selected
+            if (casterClusterId) {
+                fetchSegmentIds();
+            }
         }
-    }, [casterId]);
+    }, [casterId, casterClusterId]);
 
     useEffect(() => {
         if (strandId) {
@@ -78,11 +83,7 @@ const InsertDisassembly = () => {
         }
     }, [strandId]);
 
-    useEffect(() => {
-        if (segmentPosition) {
-            fetchSegmentIds(segmentPosition);
-        }
-    }, [segmentPosition]);
+    // Removed - segments now loaded when caster is selected
 
     const fetchExistingRollers = async () => {
         try {
@@ -140,12 +141,12 @@ const InsertDisassembly = () => {
         }
     };
 
-    const fetchSegmentIds = async (position) => {
+    const fetchSegmentIds = async () => {
         try {
+            if (!casterClusterId) return;
             const response = await axios.get('/api/segment-ids', {
                 params: {
-                    strandId: strandId,
-                    positionNo: position
+                    casterClusterId: casterClusterId
                 }
             });
             if (response.data.success) {
@@ -360,7 +361,15 @@ const InsertDisassembly = () => {
                         <label>Caster ID</label>
                         <select
                             value={casterId}
-                            onChange={(e) => setCasterId(e.target.value)}
+                            onChange={(e) => {
+                                const selectedCasterId = e.target.value;
+                                setCasterId(selectedCasterId);
+                                // Find the selected caster and store its cluster ID
+                                const selectedCaster = casterOptions.find(c => c.caster_id == selectedCasterId);
+                                if (selectedCaster) {
+                                    setCasterClusterId(selectedCaster.caster_cluster_id);
+                                }
+                            }}
                             className={errors.casterId ? 'error' : ''}
                         >
                             <option value="">-- Select --</option>

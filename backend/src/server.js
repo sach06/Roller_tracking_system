@@ -102,7 +102,7 @@ app.get('/api/casters', async (req, res) => {
         const pool = await getPool();
         const result = await pool.request()
             .input('siteName', sql.NVarChar, req.query.site)
-            .query(`SELECT c.caster_id, c.caster_name, c.caster_code
+            .query(`SELECT c.caster_id, c.caster_name, c.caster_code, c.caster_cluster_id
                     FROM [roller_tracking].[caster] c
                     JOIN [roller_tracking].[site] s ON c.site_id = s.site_id
                     WHERE s.site_name = @siteName AND c.is_active = 1 
@@ -145,22 +145,16 @@ app.get('/api/segment-positions', async (req, res) => {
     }
 });
 
-// Get segment IDs for a position
+// Get segment IDs for a caster
 app.get('/api/segment-ids', async (req, res) => {
     try {
         const pool = await getPool();
         const result = await pool.request()
-            .input('strandId', sql.Int, req.query.strandId)
-            .input('positionNo', sql.Int, req.query.positionNo)
-            .query(`SELECT s.segment_id, s.segment_no
-                    FROM [roller_tracking].[position] p
-                    JOIN [roller_tracking].[segment_position_rule] spr
-                        ON spr.position_id = p.position_id
-                    JOIN [roller_tracking].[segment] s
-                        ON s.segment_id = spr.segment_id
-                    WHERE p.strand_id = @strandId
-                      AND p.position_no = @positionNo
-                    ORDER BY s.segment_no`);
+            .input('casterClusterId', sql.Int, req.query.casterClusterId)
+            .query(`SELECT segment_id, segment_no
+                    FROM [roller_tracking].[segment]
+                    WHERE caster_cluster_id = @casterClusterId
+                    ORDER BY segment_no`);
         res.json({ success: true, segments: result.recordset });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
