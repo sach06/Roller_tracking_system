@@ -58,6 +58,151 @@ app.get('/api/sites', async (req, res) => {
     }
 });
 
+// Get existing rollers
+app.get('/api/rollers/existing', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .query('SELECT roller_sleeve_id FROM [roller_tracking].[roller_sleeve] WHERE is_scrapped = 0 ORDER BY roller_type');
+        res.json({ success: true, rollers: result.recordset });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Get roller counts
+app.get('/api/rollers/:id/counts', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const skinPassResult = await pool.request()
+            .input('rollerId', sql.NVarChar, req.params.id)
+            .query(`SELECT SUM(CASE WHEN is_skin_cut = 1 THEN 1 ELSE 0 END) AS skin_cut_count 
+                    FROM [roller_tracking].[roller_lifecycle] 
+                    WHERE roller_sleeve_id = @rollerId`);
+
+        const claddingResult = await pool.request()
+            .input('rollerId', sql.NVarChar, req.params.id)
+            .query(`SELECT SUM(CASE WHEN is_cladded = 1 THEN 1 ELSE 0 END) AS cladded_count 
+                    FROM [roller_tracking].[roller_lifecycle] 
+                    WHERE roller_sleeve_id = @rollerId`);
+
+        res.json({
+            success: true,
+            skinPassCount: skinPassResult.recordset[0]?.skin_cut_count || 0,
+            claddingCount: claddingResult.recordset[0]?.cladded_count || 0
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Get casters for a site
+app.get('/api/casters', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('siteId', sql.NVarChar, req.query.site)
+            .query(`SELECT caster_name 
+                    FROM [roller_tracking].[caster] 
+                    WHERE site_id = @siteId AND is_active = 1 
+                    ORDER BY caster_name`);
+        res.json({ success: true, casters: result.recordset });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Get strands for a caster
+app.get('/api/strands', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('casterId', sql.NVarChar, req.query.casterId)
+            .query(`SELECT strand_id, strand_no 
+                    FROM [roller_tracking].[strand] 
+                    WHERE caster_id = @casterId 
+                    ORDER BY strand_no`);
+        res.json({ success: true, strands: result.recordset });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Get segment positions for a strand
+app.get('/api/segment-positions', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('strandId', sql.NVarChar, req.query.strandId)
+            .query(`SELECT position_id, position_no 
+                    FROM [roller_tracking].[position] 
+                    WHERE strand_id = @strandId 
+                    ORDER BY position_no`);
+        res.json({ success: true, positions: result.recordset });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Get segment IDs for a position
+app.get('/api/segment-ids', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('positionId', sql.NVarChar, req.query.positionId)
+            .query(`SELECT s_segment_id, s_segment_no 
+                    FROM [roller_tracking].[segment_position_rule_spr] 
+                    JOIN [roller_tracking].[segment] s ON s.segment_id = sp.position_id 
+                    WHERE spr.position_id = @positionId 
+                    ORDER BY s.segment_no`);
+        res.json({ success: true, segments: result.recordset });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Submit insert disassembly data
+app.post('/api/insert-disassembly', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const data = req.body;
+
+        await pool.request()
+            .input('rollerType', sql.NVarChar, data.rollerType)
+            .input('driveType', sql.NVarChar, data.driveType)
+            .input('rollerId', sql.NVarChar, data.rollerId)
+            .input('casterId', sql.NVarChar, data.casterId)
+            .input('strandId', sql.NVarChar, data.strandId)
+            .input('segmentPosition', sql.NVarChar, data.segmentPosition)
+            .input('segmentId', sql.NVarChar, data.segmentId)
+            .input('incomingDate', sql.Date, data.incomingDate)
+            .input('configuration', sql.Int, data.configuration)
+            .input('incomingRollerPosition', sql.Int, data.incomingRollerPosition)
+            .input('hasBreakout', sql.Bit, data.hasBreakout === 'Yes' ? 1 : 0)
+            .input('haveJournal', sql.Bit, data.haveJournal === 'Yes' ? 1 : 0)
+            .input('journalDiameterA', sql.Decimal(10, 2), data.journalDiameterA)
+            .input('journalDiameterB', sql.Decimal(10, 2), data.journalDiameterB)
+            .input('segmentTonnage', sql.Decimal(10, 2), data.segmentTonnage)
+            .input('incomingDiameterA', sql.Decimal(10, 2), data.incomingDiameterA)
+            .input('incomingDiameterB', sql.Decimal(10, 2), data.incomingDiameterB)
+            .input('axleId', sql.NVarChar, data.axleId)
+            .input('userId', sql.NVarChar, data.userId)
+            .query(`INSERT INTO [roller_tracking].[roller_lifecycle] 
+                    (roller_sleeve_id, caster_id, strand_id, segment_position, segment_id, 
+                     incoming_date, configuration, incoming_roller_position, has_breakout, 
+                     have_journal, journal_diameter_a, journal_diameter_b, segment_tonnage, 
+                     incoming_diameter_a, incoming_diameter_b, axle_id, created_by) 
+                    VALUES (@rollerId, @casterId, @strandId, @segmentPosition, @segmentId, 
+                            @incomingDate, @configuration, @incomingRollerPosition, @hasBreakout, 
+                            @haveJournal, @journalDiameterA, @journalDiameterB, @segmentTonnage, 
+                            @incomingDiameterA, @incomingDiameterB, @axleId, @userId)`);
+
+        res.json({ success: true, message: 'Data inserted successfully' });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {

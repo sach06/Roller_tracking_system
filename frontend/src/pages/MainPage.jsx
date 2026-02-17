@@ -49,7 +49,7 @@ const MainPage = () => {
         <div className="tab-content">
             <button
                 className="action-btn"
-                onClick={() => navigate('/disassembly')}
+                onClick={() => navigate('/insert-disassembly')}
             >
                 Insert at disassembly
             </button>
