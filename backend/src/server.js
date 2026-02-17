@@ -150,11 +150,16 @@ app.get('/api/segment-ids', async (req, res) => {
     try {
         const pool = await getPool();
         const result = await pool.request()
-            .input('positionId', sql.NVarChar, req.query.positionId)
-            .query(`SELECT s_segment_id, s_segment_no 
-                    FROM [roller_tracking].[segment_position_rule_spr] 
-                    JOIN [roller_tracking].[segment] s ON s.segment_id = sp.position_id 
-                    WHERE spr.position_id = @positionId 
+            .input('strandId', sql.Int, req.query.strandId)
+            .input('positionNo', sql.Int, req.query.positionNo)
+            .query(`SELECT s.segment_id, s.segment_no
+                    FROM [roller_tracking].[position] p
+                    JOIN [roller_tracking].[segment_position_rule] spr
+                        ON spr.position_id = p.position_id
+                    JOIN [roller_tracking].[segment] s
+                        ON s.segment_id = spr.segment_id
+                    WHERE p.strand_id = @strandId
+                      AND p.position_no = @positionNo
                     ORDER BY s.segment_no`);
         res.json({ success: true, segments: result.recordset });
     } catch (err) {

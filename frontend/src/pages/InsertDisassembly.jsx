@@ -142,7 +142,12 @@ const InsertDisassembly = () => {
 
     const fetchSegmentIds = async (position) => {
         try {
-            const response = await axios.get('/api/segment-ids', { params: { positionId: position } });
+            const response = await axios.get('/api/segment-ids', {
+                params: {
+                    strandId: strandId,
+                    positionNo: position
+                }
+            });
             if (response.data.success) {
                 setSegmentIdOptions(response.data.segments);
             }
@@ -414,8 +419,8 @@ const InsertDisassembly = () => {
                         >
                             <option value="">-- Select --</option>
                             {segmentIdOptions.map((seg, idx) => (
-                                <option key={idx} value={seg.s_segment_no}>
-                                    {seg.s_segment_no}
+                                <option key={idx} value={seg.segment_id}>
+                                    {seg.segment_no}
                                 </option>
                             ))}
                         </select>
