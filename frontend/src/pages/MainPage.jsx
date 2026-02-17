@@ -55,7 +55,7 @@ const MainPage = () => {
             </button>
             <button
                 className="action-btn"
-                onClick={() => navigate('/processing')}
+                onClick={() => navigate('/insert-processing')}
             >
                 Insert after processing
             </button>
