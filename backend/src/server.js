@@ -174,36 +174,37 @@ app.post('/api/insert-disassembly', async (req, res) => {
         const data = req.body;
 
         await pool.request()
-            .input('rollerSleeveId', sql.NVarChar, data.rollerId)
-            .input('fromSiteId', sql.Int, data.siteId || null)
+            .input('rollerSleeveId', sql.Int, data.rollerId)
+            .input('fromSiteId', sql.Int, data.siteId)
             .input('fromCasterId', sql.Int, data.casterId)
             .input('fromStrandId', sql.Int, data.strandId)
             .input('fromPositionId', sql.Int, data.segmentPosition)
             .input('fromSegmentId', sql.Int, data.segmentId)
-            .input('incomingDate', sql.Date, data.incomingDate)
-            .input('configuration', sql.TinyInt, data.configuration)
-            .input('incomingRollerPosition', sql.NVarChar, data.incomingRollerPosition)
-            .input('breakout', sql.Bit, data.hasBreakout === 'Yes' ? 1 : 0)
-            .input('haveJournal', sql.Bit, data.haveJournal === 'Yes' ? 1 : 0)
-            .input('journalDiameterA', sql.Decimal(10, 2), data.journalDiameterA || null)
-            .input('journalDiameterB', sql.Decimal(10, 2), data.journalDiameterB || null)
-            .input('segmentTonnage', sql.Decimal(10, 2), data.segmentTonnage || null)
-            .input('incomingDiameterA', sql.Decimal(10, 2), data.incomingDiameterA)
-            .input('incomingDiameterB', sql.Decimal(10, 2), data.incomingDiameterB)
-            .input('axleId', sql.Int, data.axleId || null)
+            .input('receivedAt', sql.DateTime2, data.incomingDate)
+            .input('receivedConfig', sql.Int, data.configuration || null)
+            .input('fromRollerPosition', sql.Int, data.incomingRollerPosition || null)
+            .input('breakoutFlag', sql.Bit, data.hasBreakout === 'Yes' ? 1 : 0)
+            .input('receivedJournalFlag', sql.Bit, data.haveJournal === 'Yes' ? 1 : 0)
+            .input('receivedJournalA', sql.Decimal(10, 3), data.journalDiameterA || null)
+            .input('receivedJournalB', sql.Decimal(10, 3), data.journalDiameterB || null)
+            .input('tonnage', sql.Int, data.segmentTonnage || null)
+            .input('receivedDiameterA', sql.Decimal(10, 3), data.incomingDiameterA)
+            .input('receivedDiameterB', sql.Decimal(10, 3), data.incomingDiameterB)
+            .input('receivedAxleId', sql.Int, data.axleId || null)
             .input('createdByUserId', sql.Int, data.userId)
+            .input('updatedByUserId', sql.Int, data.userId)
             .input('processStage', sql.NVarChar, 'RECEIVED')
             .query(`INSERT INTO [roller_tracking].[roller_lifecycle] 
                     (roller_sleeve_id, from_site_id, from_caster_id, from_strand_id, 
-                     from_position_id, from_segment_id, incoming_date, configuration, 
-                     incoming_roller_position, breakout, have_journal, journal_diameter_a, 
-                     journal_diameter_b, segment_tonnage, incoming_diameter_a, incoming_diameter_b, 
-                     axle_id, created_by_user_id, process_stage, created_at) 
+                     from_position_id, from_segment_id, received_at, received_config, 
+                     from_roller_position, breakout_flag, received_journal_flag, received_journal_a, 
+                     received_journal_b, tonnage, received_diameter_a, received_diameter_b, 
+                     received_axle_id, created_by_user_id, updated_by_user_id, process_stage) 
                     VALUES (@rollerSleeveId, @fromSiteId, @fromCasterId, @fromStrandId, 
-                            @fromPositionId, @fromSegmentId, @incomingDate, @configuration, 
-                            @incomingRollerPosition, @breakout, @haveJournal, @journalDiameterA, 
-                            @journalDiameterB, @segmentTonnage, @incomingDiameterA, @incomingDiameterB, 
-                            @axleId, @createdByUserId, @processStage, SYSDATETIME())`);
+                            @fromPositionId, @fromSegmentId, @receivedAt, @receivedConfig, 
+                            @fromRollerPosition, @breakoutFlag, @receivedJournalFlag, @receivedJournalA, 
+                            @receivedJournalB, @tonnage, @receivedDiameterA, @receivedDiameterB, 
+                            @receivedAxleId, @createdByUserId, @updatedByUserId, @processStage)`);
 
         res.json({ success: true, message: 'Data inserted successfully' });
     } catch (err) {
@@ -268,7 +269,7 @@ app.get('/api/processing/lifecycle/:rollerId/:lifecycleId', async (req, res) => 
     try {
         const pool = await getPool();
         const result = await pool.request()
-            .input('rollerSleeveId', sql.NVarChar, req.params.rollerId)
+            .input('rollerSleeveId', sql.Int, req.params.rollerId)
             .input('lifecycleId', sql.BigInt, req.params.lifecycleId)
             .query(`SELECT TOP 1
                         rl.lifecycle_id,
@@ -284,17 +285,17 @@ app.get('/api/processing/lifecycle/:rollerId/:lifecycleId', async (req, res) => 
                         p.position_no,
                         rl.from_segment_id,
                         seg.segment_no,
-                        rl.incoming_date,
-                        rl.segment_tonnage,
-                        rl.breakout,
-                        rl.incoming_diameter_a,
-                        rl.incoming_diameter_b,
-                        rl.have_journal,
-                        rl.journal_diameter_a,
-                        rl.journal_diameter_b,
-                        rl.configuration,
-                        rl.axle_id,
-                        rl.incoming_roller_position,
+                        rl.received_at,
+                        rl.tonnage,
+                        rl.breakout_flag,
+                        rl.received_diameter_a,
+                        rl.received_diameter_b,
+                        rl.received_journal_flag,
+                        rl.received_journal_a,
+                        rl.received_journal_b,
+                        rl.received_config,
+                        rl.received_axle_id,
+                        rl.from_roller_position,
                         (SELECT SUM(CAST(is_skin_cut AS INT)) FROM [roller_tracking].[roller_lifecycle] WHERE roller_sleeve_id = rl.roller_sleeve_id) AS skin_cut_count,
                         (SELECT SUM(CAST(is_cladded AS INT)) FROM [roller_tracking].[roller_lifecycle] WHERE roller_sleeve_id = rl.roller_sleeve_id) AS cladded_count
                     FROM [roller_tracking].[roller_lifecycle] rl
