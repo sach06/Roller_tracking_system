@@ -17,13 +17,13 @@ const Workshop = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('/api/assets', { ...formData, userId: JSON.parse(localStorage.getItem('user')).Username });
+            await axios.post('/api/assets', { ...formData, userId: JSON.parse(localStorage.getItem('user')).username });
             await axios.post('/api/events', {
                 assetId: formData.assetId,
                 pageId: 'PG0007',
                 eventType: 'Workshop',
                 eventData: formData,
-                userId: JSON.parse(localStorage.getItem('user')).Username
+                userId: JSON.parse(localStorage.getItem('user')).username
             });
             alert('Workshop data recorded!');
         } catch (err) {
@@ -63,3 +63,4 @@ const Workshop = () => {
 };
 
 export default Workshop;
+

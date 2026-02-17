@@ -19,13 +19,13 @@ const Disassembly = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('/api/assets', { ...formData, status: 'Disassembled', userId: JSON.parse(localStorage.getItem('user')).Username });
+            await axios.post('/api/assets', { ...formData, status: 'Disassembled', userId: JSON.parse(localStorage.getItem('user')).username });
             await axios.post('/api/events', {
                 assetId: formData.assetId,
                 pageId: 'PG0003',
                 eventType: 'Disassembly',
                 eventData: formData,
-                userId: JSON.parse(localStorage.getItem('user')).Username
+                userId: JSON.parse(localStorage.getItem('user')).username
             });
             alert('Disassembly recorded successfully!');
         } catch (err) {
@@ -74,3 +74,4 @@ const Disassembly = () => {
 };
 
 export default Disassembly;
+

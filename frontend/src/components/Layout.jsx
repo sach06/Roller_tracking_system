@@ -21,7 +21,7 @@ const Layout = () => {
 
     if (!user) return null;
 
-    const role = user.Role;
+    const role = user.role;
 
     return (
         <div className="container">
@@ -51,7 +51,7 @@ const Layout = () => {
                     )}
                 </nav>
                 <div style={{ marginTop: 'auto' }}>
-                    <p style={{ fontSize: '0.9em', color: '#aaa' }}>Logged in as: {user.Username}</p>
+                    <p style={{ fontSize: '0.9em', color: '#aaa' }}>Logged in as: {user.username}</p>
                     <button onClick={handleLogout} className="btn" style={{ width: '100%', background: '#cc0000' }}>
                         Logout
                     </button>

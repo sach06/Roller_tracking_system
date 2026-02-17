@@ -16,13 +16,13 @@ const Scrap = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post('/api/assets', { ...formData, status: 'Scrapped', location: 'Scrap Yard', userId: JSON.parse(localStorage.getItem('user')).Username });
+            await axios.post('/api/assets', { ...formData, status: 'Scrapped', location: 'Scrap Yard', userId: JSON.parse(localStorage.getItem('user')).username });
             await axios.post('/api/events', {
                 assetId: formData.assetId,
                 pageId: 'PG0010',
                 eventType: 'Scrap',
                 eventData: formData,
-                userId: JSON.parse(localStorage.getItem('user')).Username
+                userId: JSON.parse(localStorage.getItem('user')).username
             });
             alert('Scrap recorded successfully!');
         } catch (err) {
@@ -63,3 +63,4 @@ const Scrap = () => {
 };
 
 export default Scrap;
+
