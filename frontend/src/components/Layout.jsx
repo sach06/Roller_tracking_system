@@ -43,6 +43,11 @@ const Layout = () => {
                     </NavLink>
                 </nav>
                 <div style={{ marginTop: 'auto' }}>
+                    {user.site && (
+                        <p style={{ fontSize: '0.85em', color: '#999', marginBottom: '5px' }}>
+                            Site: {user.site}
+                        </p>
+                    )}
                     <p style={{ fontSize: '0.9em', color: '#aaa' }}>Logged in as: {user.username}</p>
                     <button onClick={handleLogout} className="btn" style={{ width: '100%', background: '#cc0000' }}>
                         Logout

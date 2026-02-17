@@ -48,6 +48,16 @@ async function getPool() {
 }
 
 // Routes
+app.get('/api/sites', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request().query('SELECT site_name FROM [roller_tracking].[site] ORDER BY site_name');
+        res.json({ success: true, sites: result.recordset });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
