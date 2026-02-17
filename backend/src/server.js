@@ -174,37 +174,40 @@ app.post('/api/insert-disassembly', async (req, res) => {
         const data = req.body;
 
         await pool.request()
-            .input('rollerType', sql.NVarChar, data.rollerType)
-            .input('driveType', sql.NVarChar, data.driveType)
-            .input('rollerId', sql.NVarChar, data.rollerId)
-            .input('casterId', sql.NVarChar, data.casterId)
-            .input('strandId', sql.NVarChar, data.strandId)
-            .input('segmentPosition', sql.NVarChar, data.segmentPosition)
-            .input('segmentId', sql.NVarChar, data.segmentId)
+            .input('rollerSleeveId', sql.NVarChar, data.rollerId)
+            .input('fromSiteId', sql.Int, data.siteId || null)
+            .input('fromCasterId', sql.Int, data.casterId)
+            .input('fromStrandId', sql.Int, data.strandId)
+            .input('fromPositionId', sql.Int, data.segmentPosition)
+            .input('fromSegmentId', sql.Int, data.segmentId)
             .input('incomingDate', sql.Date, data.incomingDate)
-            .input('configuration', sql.Int, data.configuration)
-            .input('incomingRollerPosition', sql.Int, data.incomingRollerPosition)
-            .input('hasBreakout', sql.Bit, data.hasBreakout === 'Yes' ? 1 : 0)
+            .input('configuration', sql.TinyInt, data.configuration)
+            .input('incomingRollerPosition', sql.NVarChar, data.incomingRollerPosition)
+            .input('breakout', sql.Bit, data.hasBreakout === 'Yes' ? 1 : 0)
             .input('haveJournal', sql.Bit, data.haveJournal === 'Yes' ? 1 : 0)
-            .input('journalDiameterA', sql.Decimal(10, 2), data.journalDiameterA)
-            .input('journalDiameterB', sql.Decimal(10, 2), data.journalDiameterB)
-            .input('segmentTonnage', sql.Decimal(10, 2), data.segmentTonnage)
+            .input('journalDiameterA', sql.Decimal(10, 2), data.journalDiameterA || null)
+            .input('journalDiameterB', sql.Decimal(10, 2), data.journalDiameterB || null)
+            .input('segmentTonnage', sql.Decimal(10, 2), data.segmentTonnage || null)
             .input('incomingDiameterA', sql.Decimal(10, 2), data.incomingDiameterA)
             .input('incomingDiameterB', sql.Decimal(10, 2), data.incomingDiameterB)
-            .input('axleId', sql.NVarChar, data.axleId)
-            .input('userId', sql.NVarChar, data.userId)
+            .input('axleId', sql.Int, data.axleId || null)
+            .input('createdByUserId', sql.Int, data.userId)
+            .input('processStage', sql.NVarChar, 'RECEIVED')
             .query(`INSERT INTO [roller_tracking].[roller_lifecycle] 
-                    (roller_sleeve_id, caster_id, strand_id, segment_position, segment_id, 
-                     incoming_date, configuration, incoming_roller_position, has_breakout, 
-                     have_journal, journal_diameter_a, journal_diameter_b, segment_tonnage, 
-                     incoming_diameter_a, incoming_diameter_b, axle_id, created_by) 
-                    VALUES (@rollerId, @casterId, @strandId, @segmentPosition, @segmentId, 
-                            @incomingDate, @configuration, @incomingRollerPosition, @hasBreakout, 
-                            @haveJournal, @journalDiameterA, @journalDiameterB, @segmentTonnage, 
-                            @incomingDiameterA, @incomingDiameterB, @axleId, @userId)`);
+                    (roller_sleeve_id, from_site_id, from_caster_id, from_strand_id, 
+                     from_position_id, from_segment_id, incoming_date, configuration, 
+                     incoming_roller_position, breakout, have_journal, journal_diameter_a, 
+                     journal_diameter_b, segment_tonnage, incoming_diameter_a, incoming_diameter_b, 
+                     axle_id, created_by_user_id, process_stage, created_at) 
+                    VALUES (@rollerSleeveId, @fromSiteId, @fromCasterId, @fromStrandId, 
+                            @fromPositionId, @fromSegmentId, @incomingDate, @configuration, 
+                            @incomingRollerPosition, @breakout, @haveJournal, @journalDiameterA, 
+                            @journalDiameterB, @segmentTonnage, @incomingDiameterA, @incomingDiameterB, 
+                            @axleId, @createdByUserId, @processStage, SYSDATETIME())`);
 
         res.json({ success: true, message: 'Data inserted successfully' });
     } catch (err) {
+        console.error('Insert disassembly error:', err);
         res.status(500).json({ success: false, error: err.message });
     }
 });

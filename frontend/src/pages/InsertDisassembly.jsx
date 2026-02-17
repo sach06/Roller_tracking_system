@@ -204,6 +204,7 @@ const InsertDisassembly = () => {
 
     const confirmSubmit = async () => {
         try {
+            const user = JSON.parse(localStorage.getItem('user'));
             const formData = {
                 rollerType,
                 driveType,
@@ -211,7 +212,7 @@ const InsertDisassembly = () => {
                 isNewRoller,
                 skinPassCount,
                 claddingCount,
-                incomingCustomer: user?.site,
+                siteId: user?.site_id,
                 casterId,
                 strandId,
                 segmentPosition,
@@ -227,7 +228,7 @@ const InsertDisassembly = () => {
                 incomingDiameterA,
                 incomingDiameterB,
                 axleId: rollerType === 'Sleeve' ? axleId : null,
-                userId: user?.username
+                userId: user?.user_id
             };
 
             const response = await axios.post('/api/insert-disassembly', formData);

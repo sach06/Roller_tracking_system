@@ -33,7 +33,12 @@ const Login = () => {
         try {
             const response = await axios.post('/api/login', { username, password });
             if (response.data.success) {
-                const userData = { ...response.data.user, site: selectedSite };
+                const selectedSiteObj = sites.find(s => s.site_name === selectedSite);
+                const userData = {
+                    ...response.data.user,
+                    site: selectedSite,
+                    site_id: selectedSiteObj?.site_id
+                };
                 localStorage.setItem('user', JSON.stringify(userData));
                 navigate('/main');
             }
