@@ -55,7 +55,7 @@ app.post('/api/login', async (req, res) => {
         const result = await pool.request()
             .input('username', sql.NVarChar, username)
             .input('password', sql.NVarChar, password)
-            .query('SELECT user_id, username, full_name, role FROM [roller_tracking].[app_user] WHERE username = @username AND password_hash = @password AND is_active = 1');
+            .query('SELECT user_id, username FROM [roller_tracking].[app_user] WHERE username = @username AND password_hash = @password AND is_active = 1');
 
         if (result.recordset.length > 0) {
             res.json({ success: true, user: result.recordset[0] });

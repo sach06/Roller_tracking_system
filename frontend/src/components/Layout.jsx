@@ -21,8 +21,6 @@ const Layout = () => {
 
     if (!user) return null;
 
-    const role = user.role;
-
     return (
         <div className="container">
             <aside className="sidebar">
@@ -31,24 +29,18 @@ const Layout = () => {
                     <NavLink to="/dashboard" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
                         🏠 Dashboard
                     </NavLink>
-                    {(role === 'REF_OP' || role === 'REF_ADMIN') && (
-                        <>
-                            <NavLink to="/disassembly" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
-                                🔧 Disassembly
-                            </NavLink>
-                            <NavLink to="/processing" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
-                                ⚙️ Processing
-                            </NavLink>
-                            <NavLink to="/scrap" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
-                                🗑️ Scrap
-                            </NavLink>
-                        </>
-                    )}
-                    {(role === 'WS_OP' || role === 'WS_ADMIN') && (
-                        <NavLink to="/workshop" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
-                            🏢 Workshop
-                        </NavLink>
-                    )}
+                    <NavLink to="/disassembly" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
+                        🔧 Disassembly
+                    </NavLink>
+                    <NavLink to="/processing" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
+                        ⚙️ Processing
+                    </NavLink>
+                    <NavLink to="/workshop" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
+                        🏢 Workshop
+                    </NavLink>
+                    <NavLink to="/scrap" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
+                        🗑️ Scrap
+                    </NavLink>
                 </nav>
                 <div style={{ marginTop: 'auto' }}>
                     <p style={{ fontSize: '0.9em', color: '#aaa' }}>Logged in as: {user.username}</p>
