@@ -17,7 +17,8 @@ const ProcessingDetails = () => {
     const [sleeveScrap, setSleeveScrap] = useState('');
     const [scrapReason, setScrapReason] = useState('');
     const [cladding, setCladding] = useState('');
-    const [wiresUsed, setWiresUsed] = useState('');
+    const [claddingWireId, setCladdingWireId] = useState('');
+    const [claddingWires, setCladdingWires] = useState([]);
 
     // Roller-specific (rotary joints)
     const [driveRotaryJointChange, setDriveRotaryJointChange] = useState('');
@@ -43,10 +44,22 @@ const ProcessingDetails = () => {
 
     useEffect(() => {
         fetchLifecycleData();
+        fetchCladdingWires();
         if (rollerType === 'Sleeve') {
             fetchExistingAxles();
         }
     }, [rollerId, lifecycleId, rollerType]);
+
+    const fetchCladdingWires = async () => {
+        try {
+            const response = await axios.get('/api/cladding-wires');
+            if (response.data.success) {
+                setCladdingWires(response.data.wires);
+            }
+        } catch (err) {
+            console.error('Error fetching cladding wires:', err);
+        }
+    };
 
     const fetchLifecycleData = async () => {
         try {
@@ -83,8 +96,8 @@ const ProcessingDetails = () => {
         return '';
     };
 
-    const diameterADiff = calculateDiameterDiff(lifecycleData?.incoming_diameter_a, outDiameterA);
-    const diameterBDiff = calculateDiameterDiff(lifecycleData?.incoming_diameter_b, outDiameterB);
+    const diameterADiff = calculateDiameterDiff(lifecycleData?.received_diameter_a, outDiameterA);
+    const diameterBDiff = calculateDiameterDiff(lifecycleData?.received_diameter_b, outDiameterB);
 
     // Visibility logic
     const showProcessDetails = skinPassCut !== '';
@@ -108,7 +121,7 @@ const ProcessingDetails = () => {
 
             if (sleeveScrap === 'No') {
                 if (!cladding) newErrors.cladding = 'Required';
-                if (cladding === 'Yes' && !wiresUsed) newErrors.wiresUsed = 'Required when cladding';
+                if (cladding === 'Yes' && !claddingWireId) newErrors.claddingWireId = 'Required when cladding';
             }
         }
 
@@ -162,7 +175,7 @@ const ProcessingDetails = () => {
                 sleeve_scrap_yn: sleeveScrap === 'Yes' ? 1 : 0,
                 scrap_reason: scrapReason || null,
                 cladding_yn: cladding === 'Yes' ? 1 : 0,
-                wires_used: wiresUsed ? parseInt(wiresUsed) : null,
+                cladding_wire_id: claddingWireId ? parseInt(claddingWireId) : null,
 
                 // Outgoing Details
                 out_diameter_a: outDiameterA ? parseFloat(outDiameterA) : null,
@@ -191,7 +204,9 @@ const ProcessingDetails = () => {
                 navigate('/processing');
             }
         } catch (err) {
-            alert('Error submitting data: ' + err.message);
+            console.error('Submit Error:', err);
+            const msg = err.response?.data?.error || err.message || 'Unknown error occurred';
+            alert('Error submitting data: ' + msg);
         }
         setShowConfirmDialog(false);
     };
@@ -203,7 +218,7 @@ const ProcessingDetails = () => {
             setSleeveScrap('');
             setScrapReason('');
             setCladding('');
-            setWiresUsed('');
+            setCladdingWireId('');
             setDriveRotaryJointChange('');
             setIdleRotaryJointChangeOp('');
             setIdleRotaryJointChangeDrive('');
@@ -289,57 +304,67 @@ const ProcessingDetails = () => {
                         <div className="field-group">
                             <label>Incoming Date</label>
                             <div className="readonly-value">
-                                {lifecycleData.incoming_date ? new Date(lifecycleData.incoming_date).toLocaleDateString() : 'N/A'}
+                                {lifecycleData.received_at ? new Date(lifecycleData.received_at).toLocaleDateString() : 'N/A'}
                             </div>
                         </div>
                     </div>
                     <div className="section-row">
                         <div className="field-group">
                             <label>Configuration</label>
-                            <div className="readonly-value">{lifecycleData.configuration || 'N/A'}</div>
+                            <div className="readonly-value">{lifecycleData.received_config || 'N/A'}</div>
                         </div>
                         {rollerType === 'Sleeve' && (
                             <div className="field-group">
                                 <label>Axle ID</label>
-                                <div className="readonly-value">{lifecycleData.axle_id || 'N/A'}</div>
+                                <div className="readonly-value">{lifecycleData.received_axle_id || 'N/A'}</div>
                             </div>
                         )}
                         <div className="field-group">
                             <label>Incoming Roller Position</label>
-                            <div className="readonly-value">{lifecycleData.incoming_roller_position || 'N/A'}</div>
+                            <div className="readonly-value">{lifecycleData.from_roller_position || 'N/A'}</div>
                         </div>
                     </div>
                     <div className="section-row">
                         <div className="field-group">
                             <label>Segment Tonnage</label>
-                            <div className="readonly-value">{lifecycleData.segment_tonnage || 'N/A'}</div>
+                            <div className="readonly-value">{lifecycleData.tonnage || 'N/A'}</div>
                         </div>
                         <div className="field-group">
                             <label>Breakout (Y/N)</label>
-                            <div className="readonly-value">{lifecycleData.breakout ? 'Yes' : 'No'}</div>
+                            <div className="readonly-value">{lifecycleData.breakout_flag ? 'Yes' : 'No'}</div>
                         </div>
                     </div>
                     <div className="section-row">
                         <div className="field-group">
                             <label>Incoming Diameter(A)</label>
-                            <div className="readonly-value">{lifecycleData.incoming_diameter_a || 'N/A'}</div>
+                            <div className="readonly-value">{lifecycleData.received_diameter_a || 'N/A'}</div>
                         </div>
                         <div className="field-group">
                             <label>Incoming Diameter(B)</label>
-                            <div className="readonly-value">{lifecycleData.incoming_diameter_b || 'N/A'}</div>
+                            <div className="readonly-value">{lifecycleData.received_diameter_b || 'N/A'}</div>
                         </div>
                     </div>
-                    {rollerType === 'Roller' && lifecycleData.have_journal && (
-                        <div className="section-row">
-                            <div className="field-group">
-                                <label>Journal Diameter (A)</label>
-                                <div className="readonly-value">{lifecycleData.journal_diameter_a || 'N/A'}</div>
+                    {rollerType === 'Roller' && (
+                        <>
+                            <div className="section-row">
+                                <div className="field-group">
+                                    <label>Have Journal(Y/N)</label>
+                                    <div className="readonly-value">{lifecycleData.received_journal_flag ? 'Yes' : 'No'}</div>
+                                </div>
+                                {lifecycleData.received_journal_flag && (
+                                    <>
+                                        <div className="field-group">
+                                            <label>Journal Diameter (A)</label>
+                                            <div className="readonly-value">{lifecycleData.received_journal_a || 'N/A'}</div>
+                                        </div>
+                                        <div className="field-group">
+                                            <label>Journal Diameter (B)</label>
+                                            <div className="readonly-value">{lifecycleData.received_journal_b || 'N/A'}</div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
-                            <div className="field-group">
-                                <label>Journal Diameter (B)</label>
-                                <div className="readonly-value">{lifecycleData.journal_diameter_b || 'N/A'}</div>
-                            </div>
-                        </div>
+                        </>
                     )}
                 </div>
 
@@ -416,14 +441,19 @@ const ProcessingDetails = () => {
                         {showWiresUsed && (
                             <div className="field-group pink-field">
                                 <label>Wires used</label>
-                                <input
-                                    type="number"
-                                    value={wiresUsed}
-                                    onChange={(e) => setWiresUsed(e.target.value)}
-                                    placeholder="Number of wires"
-                                    className={errors.wiresUsed ? 'error' : ''}
-                                />
-                                {errors.wiresUsed && <span className="error-text">{errors.wiresUsed}</span>}
+                                <select
+                                    value={claddingWireId}
+                                    onChange={(e) => setCladdingWireId(e.target.value)}
+                                    className={errors.claddingWireId ? 'error' : ''}
+                                >
+                                    <option value="">-- Select wire --</option>
+                                    {claddingWires.map((wire) => (
+                                        <option key={wire.cladding_wire_id} value={wire.cladding_wire_id}>
+                                            {wire.wire_name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {errors.claddingWireId && <span className="error-text">{errors.claddingWireId}</span>}
                             </div>
                         )}
                     </div>

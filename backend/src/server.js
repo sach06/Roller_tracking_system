@@ -350,41 +350,41 @@ app.post('/api/processing/update', async (req, res) => {
                 .input('updatedByUserId', sql.Int, data.updated_by_user_id)
                 .input('skinPassCutYn', sql.Bit, data.skin_pass_cut_yn)
                 .input('sleeveScrapYn', sql.Bit, data.sleeve_scrap_yn)
-                .input('scrapReason', sql.NVarChar, data.scrap_reason)
+                .input('scrapReason', sql.NVarChar(sql.MAX), data.scrap_reason)
                 .input('claddingYn', sql.Bit, data.cladding_yn)
-                .input('wiresUsed', sql.Int, data.wires_used)
+                .input('claddingWireId', sql.Int, data.cladding_wire_id || null)
                 .input('driveRotaryJointChangeYn', sql.Bit, data.drive_rotary_joint_change_yn)
                 .input('idleRotaryJointChangeOpYn', sql.Bit, data.idle_rotary_joint_change_op_yn)
                 .input('idleRotaryJointChangeDriveYn', sql.Bit, data.idle_rotary_joint_change_drive_yn)
-                .input('outDiameterA', sql.Decimal(10, 2), data.out_diameter_a)
-                .input('outDiameterB', sql.Decimal(10, 2), data.out_diameter_b)
+                .input('outDiameterA', sql.Decimal(10, 3), data.out_diameter_a)
+                .input('outDiameterB', sql.Decimal(10, 3), data.out_diameter_b)
                 .input('haveJournalYn', sql.Bit, data.have_journal_yn)
-                .input('outJournalDiameterA', sql.Decimal(10, 2), data.out_journal_diameter_a)
-                .input('outJournalDiameterB', sql.Decimal(10, 2), data.out_journal_diameter_b)
-                .input('outConfiguration', sql.TinyInt, data.out_configuration)
-                .input('diameterAReduceMm', sql.Decimal(10, 2), data.diameter_a_reduce_mm)
-                .input('diameterBReduceMm', sql.Decimal(10, 2), data.diameter_b_reduce_mm)
+                .input('outJournalDiameterA', sql.Decimal(10, 3), data.out_journal_diameter_a)
+                .input('outJournalDiameterB', sql.Decimal(10, 3), data.out_journal_diameter_b)
+                .input('outConfiguration', sql.Int, data.out_configuration)
+                .input('diameterAReduceMm', sql.Decimal(10, 3), data.diameter_a_reduce_mm)
+                .input('diameterBReduceMm', sql.Decimal(10, 3), data.diameter_b_reduce_mm)
                 .query(`UPDATE rl
                         SET 
                             rl.process_stage = 'PROCESSED',
                             rl.updated_at = SYSDATETIME(),
                             rl.updated_by_user_id = @updatedByUserId,
                             rl.is_skin_cut = @skinPassCutYn,
-                            rl.sleeve_scrap_yn = @sleeveScrapYn,
-                            rl.scrap_reason = @scrapReason,
+                            rl.roller_scrap_flag = @sleeveScrapYn,
+                            rl.roller_scrap_reason = @scrapReason,
                             rl.is_cladded = @claddingYn,
-                            rl.wires_used = @wiresUsed,
-                            rl.drive_rotary_joint_change_yn = @driveRotaryJointChangeYn,
-                            rl.idle_rotary_joint_change_op_yn = @idleRotaryJointChangeOpYn,
-                            rl.idle_rotary_joint_change_drive_yn = @idleRotaryJointChangeDriveYn,
-                            rl.out_diameter_a = @outDiameterA,
-                            rl.out_diameter_b = @outDiameterB,
-                            rl.have_journal_yn = @haveJournalYn,
-                            rl.out_journal_diameter_a = @outJournalDiameterA,
-                            rl.out_journal_diameter_b = @outJournalDiameterB,
-                            rl.out_configuration = @outConfiguration,
-                            rl.diameter_a_reduce_mm = @diameterAReduceMm,
-                            rl.diameter_b_reduce_mm = @diameterBReduceMm
+                            rl.cladding_wire_id = @claddingWireId,
+                            rl.drive_rotary_joint_change_flag = @driveRotaryJointChangeYn,
+                            rl.idle_rotary_joint_change_o_flag = @idleRotaryJointChangeOpYn,
+                            rl.idle_rotary_joint_change_d_flag = @idleRotaryJointChangeDriveYn,
+                            rl.dispatched_diameter_a = @outDiameterA,
+                            rl.dispatched_diameter_b = @outDiameterB,
+                            rl.dispatched_journal_flag = @haveJournalYn,
+                            rl.dispatched_journal_a = @outJournalDiameterA,
+                            rl.dispatched_journal_b = @outJournalDiameterB,
+                            rl.dispatched_config = @outConfiguration,
+                            rl.diff_diameter_a = @diameterAReduceMm,
+                            rl.diff_diameter_b = @diameterBReduceMm
                         FROM [roller_tracking].[roller_lifecycle] rl
                         WHERE rl.lifecycle_id = @lifecycleId`);
         } else {
@@ -396,40 +396,39 @@ app.post('/api/processing/update', async (req, res) => {
                 .input('sleeveScrapYn', sql.Bit, data.sleeve_scrap_yn)
                 .input('scrapReason', sql.NVarChar, data.scrap_reason)
                 .input('claddingYn', sql.Bit, data.cladding_yn)
-                .input('wiresUsed', sql.Int, data.wires_used)
-                .input('axleId', sql.Int, data.axle_id)
-                .input('isNewAxleYn', sql.Bit, data.is_new_axle_yn)
-                .input('axleStraighteningYn', sql.Bit, data.axle_straightening_yn)
-                .input('outDiameterA', sql.Decimal(10, 2), data.out_diameter_a)
-                .input('outDiameterB', sql.Decimal(10, 2), data.out_diameter_b)
-                .input('outConfiguration', sql.TinyInt, data.out_configuration)
-                .input('diameterAReduceMm', sql.Decimal(10, 2), data.diameter_a_reduce_mm)
-                .input('diameterBReduceMm', sql.Decimal(10, 2), data.diameter_b_reduce_mm)
+                .input('claddingWireId', sql.Int, data.cladding_wire_id || null)
+                .input('dispatchedAxleId', sql.Int, data.axle_id)
+                .input('axleStraightFlag', sql.Bit, data.axle_straight_flag)
+                .input('outDiameterA', sql.Decimal(10, 3), data.out_diameter_a)
+                .input('outDiameterB', sql.Decimal(10, 3), data.out_diameter_b)
+                .input('outConfiguration', sql.Int, data.out_configuration)
+                .input('diameterAReduceMm', sql.Decimal(10, 3), data.diameter_a_reduce_mm)
+                .input('diameterBReduceMm', sql.Decimal(10, 3), data.diameter_b_reduce_mm)
                 .query(`UPDATE rl
                         SET
                             rl.process_stage = 'PROCESSED',
                             rl.updated_at = SYSDATETIME(),
                             rl.updated_by_user_id = @updatedByUserId,
                             rl.is_skin_cut = @skinPassCutYn,
-                            rl.sleeve_scrap_yn = @sleeveScrapYn,
-                            rl.scrap_reason = @scrapReason,
+                            rl.roller_scrap_flag = @sleeveScrapYn,
+                            rl.roller_scrap_reason = @scrapReason,
                             rl.is_cladded = @claddingYn,
-                            rl.wires_used = @wiresUsed,
-                            rl.axle_id = @axleId,
-                            rl.is_new_axle_yn = @isNewAxleYn,
-                            rl.axle_straightening_yn = @axleStraighteningYn,
-                            rl.out_diameter_a = @outDiameterA,
-                            rl.out_diameter_b = @outDiameterB,
-                            rl.out_configuration = @outConfiguration,
-                            rl.diameter_a_reduce_mm = @diameterAReduceMm,
-                            rl.diameter_b_reduce_mm = @diameterBReduceMm
+                            rl.cladding_wire_id = @claddingWireId,
+                            rl.dispatched_axle_id = @dispatchedAxleId,
+                            rl.dispatched_axle_straight_flag = @axleStraightFlag,
+                            rl.dispatched_diameter_a = @outDiameterA,
+                            rl.dispatched_diameter_b = @outDiameterB,
+                            rl.dispatched_config = @outConfiguration,
+                            rl.diff_diameter_a = @diameterAReduceMm,
+                            rl.diff_diameter_b = @diameterBReduceMm
                         FROM [roller_tracking].[roller_lifecycle] rl
                         WHERE rl.lifecycle_id = @lifecycleId`);
         }
 
         res.json({ success: true, message: 'Processing data updated successfully' });
     } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
+        console.error('Processing Update Error:', err);
+        res.status(500).json({ success: false, error: err.message, stack: err.stack });
     }
 });
 
@@ -483,14 +482,14 @@ app.post('/api/processing/add-new', async (req, res) => {
                 .input('sleeveScrapYn', sql.Bit, data.sleeve_scrap_yn)
                 .input('scrapReason', sql.NVarChar, data.scrap_reason)
                 .input('claddingYn', sql.Bit, data.cladding_yn)
-                .input('wiresUsed', sql.Int, data.wires_used)
+                .input('claddingWireId', sql.Int, data.cladding_wire_id || null)
 
                 // Outgoing Details
-                .input('outDiameterA', sql.Decimal(10, 2), data.out_diameter_a)
-                .input('outDiameterB', sql.Decimal(10, 2), data.out_diameter_b)
-                .input('outConfiguration', sql.TinyInt, data.out_configuration)
-                .input('diameterAReduceMm', sql.Decimal(10, 2), data.diameter_a_reduce_mm)
-                .input('diameterBReduceMm', sql.Decimal(10, 2), data.diameter_b_reduce_mm)
+                .input('outDiameterA', sql.Decimal(10, 3), data.out_diameter_a)
+                .input('outDiameterB', sql.Decimal(10, 3), data.out_diameter_b)
+                .input('outConfiguration', sql.Int, data.out_configuration)
+                .input('diameterAReduceMm', sql.Decimal(10, 3), data.diameter_a_reduce_mm)
+                .input('diameterBReduceMm', sql.Decimal(10, 3), data.diameter_b_reduce_mm)
 
                 .input('processStage', sql.NVarChar, 'PROCESSED');
 
@@ -503,13 +502,12 @@ app.post('/api/processing/add-new', async (req, res) => {
                     .input('idleRotaryJointChangeOpYn', sql.Bit, data.idle_rotary_joint_change_op_yn)
                     .input('idleRotaryJointChangeDriveYn', sql.Bit, data.idle_rotary_joint_change_drive_yn)
                     .input('haveJournalYn', sql.Bit, data.have_journal_yn)
-                    .input('outJournalDiameterA', sql.Decimal(10, 2), data.out_journal_diameter_a)
-                    .input('outJournalDiameterB', sql.Decimal(10, 2), data.out_journal_diameter_b);
+                    .input('outJournalDiameterA', sql.Decimal(10, 3), data.out_journal_diameter_a)
+                    .input('outJournalDiameterB', sql.Decimal(10, 3), data.out_journal_diameter_b);
             } else {
-                request.input('axleId', sql.Int, data.axleId) // Using same axle ID for received and outgoing if new?
-                    .input('receivedAxleId', sql.Int, data.axleId)
-                    .input('isNewAxleYn', sql.Bit, data.is_new_axle_yn)
-                    .input('axleStraighteningYn', sql.Bit, data.axle_straightening_yn);
+                request.input('receivedAxleId', sql.Int, data.axleId || null)
+                    .input('dispatchedAxleId', sql.Int, data.axle_id || null)
+                    .input('axleStraightFlag', sql.Bit, data.axle_straight_flag);
             }
 
             // Build the query
@@ -518,28 +516,28 @@ app.post('/api/processing/add-new', async (req, res) => {
                 from_position_id, from_segment_id, received_at, received_config, 
                 from_roller_position, breakout_flag, tonnage, received_diameter_a, received_diameter_b, 
                 created_by_user_id, updated_by_user_id, process_stage,
-                is_skin_cut, sleeve_scrap_yn, scrap_reason, is_cladded, wires_used,
-                out_diameter_a, out_diameter_b, out_configuration, diameter_a_reduce_mm, diameter_b_reduce_mm
+                is_skin_cut, roller_scrap_flag, roller_scrap_reason, is_cladded, cladding_wire_id,
+                dispatched_diameter_a, dispatched_diameter_b, dispatched_config, diff_diameter_a, diff_diameter_b
             `;
             let values = `
                 @rollerSleeveId, @fromSiteId, @fromCasterId, @fromStrandId,
                 @fromPositionId, @fromSegmentId, @receivedAt, @receivedConfig,
                 @fromRollerPosition, @breakoutFlag, @tonnage, @receivedDiameterA, @receivedDiameterB,
                 @createdByUserId, @updatedByUserId, @processStage,
-                @skinPassCutYn, @sleeveScrapYn, @scrapReason, @claddingYn, @wiresUsed,
+                @skinPassCutYn, @sleeveScrapYn, @scrapReason, @claddingYn, @claddingWireId,
                 @outDiameterA, @outDiameterB, @outConfiguration, @diameterAReduceMm, @diameterBReduceMm
             `;
 
             if (data.rollerType === 'Roller') {
                 columns += `, received_journal_flag, received_journal_a, received_journal_b,
-                              drive_rotary_joint_change_yn, idle_rotary_joint_change_op_yn, idle_rotary_joint_change_drive_yn,
-                              have_journal_yn, out_journal_diameter_a, out_journal_diameter_b`;
+                              drive_rotary_joint_change_flag, idle_rotary_joint_change_o_flag, idle_rotary_joint_change_d_flag,
+                              dispatched_journal_flag, dispatched_journal_a, dispatched_journal_b`;
                 values += `, @receivedJournalFlag, @receivedJournalA, @receivedJournalB,
                              @driveRotaryJointChangeYn, @idleRotaryJointChangeOpYn, @idleRotaryJointChangeDriveYn,
                              @haveJournalYn, @outJournalDiameterA, @outJournalDiameterB`;
             } else {
-                columns += `, received_axle_id, axle_id, is_new_axle_yn, axle_straightening_yn`;
-                values += `, @receivedAxleId, @axleId, @isNewAxleYn, @axleStraighteningYn`;
+                columns += `, received_axle_id, dispatched_axle_id, dispatched_axle_straight_flag`;
+                values += `, @receivedAxleId, @dispatchedAxleId, @axleStraightFlag`;
             }
 
             await request.query(`INSERT INTO [roller_tracking].[roller_lifecycle] (${columns}) VALUES (${values})`);
@@ -554,6 +552,20 @@ app.post('/api/processing/add-new', async (req, res) => {
 
     } catch (err) {
         console.error('Insert after processing error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Get all cladding wire options
+app.get('/api/cladding-wires', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .query(`SELECT cladding_wire_id, wire_name, wire_desc 
+                    FROM [roller_tracking].[cladding_wire] 
+                    ORDER BY wire_name`);
+        res.json({ success: true, wires: result.recordset });
+    } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }
 });

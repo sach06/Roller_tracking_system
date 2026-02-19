@@ -12,8 +12,12 @@ const Login = () => {
     const navigate = useNavigate();
 
     useEffect(() => {
+        const user = localStorage.getItem('user');
+        if (user) {
+            navigate('/main');
+        }
         fetchSites();
-    }, []);
+    }, [navigate]);
 
     const fetchSites = async () => {
         try {
@@ -49,79 +53,80 @@ const Login = () => {
 
     return (
         <div className="login-container">
-            <div className="login-box">
-                <h2 style={{ textAlign: 'center', marginBottom: '30px', color: '#0047AB' }}>
-                    Roller Tracker
-                </h2>
+            {/* Left branding panel */}
+            <div className="login-brand-panel">
+                <img src="/SMS_Logo.jpg" alt="SMS group" className="login-brand-logo" />
+                <h1 className="login-brand-title">Roller Tracking System</h1>
+                <p className="login-brand-subtitle">Workshop Management &amp; Quality Control</p>
+            </div>
 
-                {error && <p style={{ color: 'red', textAlign: 'center', marginBottom: '15px' }}>{error}</p>}
+            {/* Right login form */}
+            <div className="login-form-panel">
+                <div className="login-box">
+                    <h2 className="login-heading">Sign In</h2>
+                    <p className="login-subheading">Please select your site and enter your credentials</p>
 
-                {loading ? (
-                    <p style={{ textAlign: 'center' }}>Loading sites...</p>
-                ) : (
-                    <form onSubmit={handleSubmit}>
-                        {/* Step 1: Site Selection */}
-                        <div className="form-group">
-                            <label>Site / Customer</label>
-                            <select
-                                value={selectedSite}
-                                onChange={(e) => setSelectedSite(e.target.value)}
-                                required
-                                style={{
-                                    padding: '10px',
-                                    fontSize: '1em',
-                                    backgroundColor: selectedSite ? '#e8f4f8' : 'white'
-                                }}
-                            >
-                                <option value="">-- Select Site --</option>
-                                {sites.map((site, index) => (
-                                    <option key={index} value={site.site_name}>
-                                        {site.site_name}
-                                    </option>
-                                ))}
-                            </select>
+                    {error && (
+                        <div className="login-error">
+                            <span>⚠</span> {error}
                         </div>
+                    )}
 
-                        {/* Step 2: Username & Password (only show after site selection) */}
-                        {selectedSite && (
-                            <>
-                                <div className="form-group" style={{ marginTop: '20px' }}>
-                                    <label>User ID</label>
-                                    <input
-                                        type="text"
-                                        value={username}
-                                        onChange={(e) => setUsername(e.target.value)}
-                                        placeholder="Enter your username"
-                                        required
-                                        autoFocus
-                                    />
-                                </div>
-                                <div className="form-group">
-                                    <label>Password</label>
-                                    <input
-                                        type="password"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        placeholder="Enter your password"
-                                        required
-                                    />
-                                </div>
-                                <button
-                                    type="submit"
-                                    className="btn"
-                                    style={{
-                                        width: '100%',
-                                        marginTop: '20px',
-                                        padding: '12px',
-                                        fontSize: '1.1em'
-                                    }}
+                    {loading ? (
+                        <p style={{ textAlign: 'center', color: '#6B7280' }}>Loading sites…</p>
+                    ) : (
+                        <form onSubmit={handleSubmit}>
+                            <div className="form-group">
+                                <label>Site / Customer</label>
+                                <select
+                                    value={selectedSite}
+                                    onChange={(e) => setSelectedSite(e.target.value)}
+                                    required
                                 >
-                                    Log in
-                                </button>
-                            </>
-                        )}
-                    </form>
-                )}
+                                    <option value="">— Select Site —</option>
+                                    {sites.map((site, index) => (
+                                        <option key={index} value={site.site_name}>
+                                            {site.site_name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {selectedSite && (
+                                <>
+                                    <div className="form-group" style={{ marginTop: '18px' }}>
+                                        <label>User ID</label>
+                                        <input
+                                            type="text"
+                                            value={username}
+                                            onChange={(e) => setUsername(e.target.value)}
+                                            placeholder="Enter your username"
+                                            required
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Password</label>
+                                        <input
+                                            type="password"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            placeholder="Enter your password"
+                                            required
+                                        />
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        className="btn"
+                                        style={{ width: '100%', marginTop: '24px', padding: '13px', fontSize: '1em', letterSpacing: '0.03em' }}
+                                    >
+                                        Sign In
+                                    </button>
+                                </>
+                            )}
+                        </form>
+                    )}
+                </div>
             </div>
         </div>
     );

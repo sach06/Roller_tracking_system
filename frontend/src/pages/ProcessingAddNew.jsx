@@ -45,7 +45,8 @@ const ProcessingAddNew = () => {
     const [sleeveScrap, setSleeveScrap] = useState('');
     const [scrapReason, setScrapReason] = useState('');
     const [cladding, setCladding] = useState('');
-    const [wiresUsed, setWiresUsed] = useState('');
+    const [claddingWireId, setCladdingWireId] = useState('');
+    const [claddingWires, setCladdingWires] = useState([]);
 
     // Rotary Joints (Roller only)
     const [driveRotaryJointChange, setDriveRotaryJointChange] = useState('');
@@ -77,7 +78,15 @@ const ProcessingAddNew = () => {
             setUser(JSON.parse(storedUser));
         }
         fetchExistingAxles();
+        fetchCladdingWires();
     }, []);
+
+    const fetchCladdingWires = async () => {
+        try {
+            const response = await axios.get('/api/cladding-wires');
+            if (response.data.success) setCladdingWires(response.data.wires);
+        } catch (err) { console.error('Error fetching cladding wires:', err); }
+    };
 
     useEffect(() => {
         if (user?.site) {
@@ -181,7 +190,7 @@ const ProcessingAddNew = () => {
             }
             if (sleeveScrap === 'No') {
                 if (!cladding) newErrors.cladding = 'Required';
-                if (cladding === 'Yes' && !wiresUsed) newErrors.wiresUsed = 'Required';
+                if (cladding === 'Yes' && !claddingWireId) newErrors.claddingWireId = 'Required';
             }
         }
 
@@ -251,7 +260,7 @@ const ProcessingAddNew = () => {
                 sleeve_scrap_yn: sleeveScrap === 'Yes' ? 1 : 0,
                 scrap_reason: scrapReason,
                 cladding_yn: cladding === 'Yes' ? 1 : 0,
-                wires_used: wiresUsed ? parseInt(wiresUsed) : null,
+                cladding_wire_id: claddingWireId ? parseInt(claddingWireId) : null,
 
                 // Outgoing
                 out_diameter_a: outDiameterA ? parseFloat(outDiameterA) : null,
@@ -271,9 +280,8 @@ const ProcessingAddNew = () => {
                 out_journal_diameter_b: outJournalDiameterB ? parseFloat(outJournalDiameterB) : null,
 
                 // Sleeve Only
-                axleId: axleId,
-                is_new_axle_yn: isNewAxle ? 1 : 0,
-                axle_straightening_yn: axleStraightening === 'Yes' ? 1 : 0
+                axle_id: axleId,
+                axle_straight_flag: axleStraightening === 'Yes' ? 1 : 0
             };
 
             const response = await axios.post('/api/processing/add-new', formData);
@@ -282,7 +290,9 @@ const ProcessingAddNew = () => {
                 navigate('/processing');
             }
         } catch (err) {
-            alert('Error: ' + err.message);
+            console.error('Submit Error:', err);
+            const msg = err.response?.data?.error || err.message || 'Unknown error occurred';
+            alert('Error: ' + msg);
         }
         setShowConfirmDialog(false);
     };
@@ -508,7 +518,19 @@ const ProcessingAddNew = () => {
                         {cladding === 'Yes' && (
                             <div className="field-group pink-field">
                                 <label>Wires Used</label>
-                                <input type="number" value={wiresUsed} onChange={(e) => setWiresUsed(e.target.value)} className={errors.wiresUsed ? 'error' : ''} />
+                                <select
+                                    value={claddingWireId}
+                                    onChange={(e) => setCladdingWireId(e.target.value)}
+                                    className={errors.claddingWireId ? 'error' : ''}
+                                >
+                                    <option value="">-- Select wire --</option>
+                                    {claddingWires.map((wire) => (
+                                        <option key={wire.cladding_wire_id} value={wire.cladding_wire_id}>
+                                            {wire.wire_name}
+                                        </option>
+                                    ))}
+                                </select>
+                                {errors.claddingWireId && <span className="error-text">{errors.claddingWireId}</span>}
                             </div>
                         )}
                     </div>
