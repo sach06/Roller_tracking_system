@@ -5,6 +5,7 @@ import MainPage from './pages/MainPage';
 import Dashboard from './pages/Dashboard';
 import InsertDisassembly from './pages/InsertDisassembly';
 import InsertProcessing from './pages/InsertProcessing';
+import ProcessingAddNew from './pages/ProcessingAddNew';
 import ProcessingDetails from './pages/ProcessingDetails';
 import Disassembly from './pages/Disassembly';
 import Processing from './pages/Processing';
@@ -23,6 +24,7 @@ function App() {
                     <Route path="/dashboard" element={<Dashboard />} />
                     <Route path="/insert-disassembly" element={<InsertDisassembly />} />
                     <Route path="/insert-processing" element={<InsertProcessing />} />
+                    <Route path="/processing-add-new" element={<ProcessingAddNew />} />
                     <Route path="/processing-details/:rollerId/:lifecycleId" element={<ProcessingDetails />} />
                     <Route path="/disassembly" element={<Disassembly />} />
                     <Route path="/processing" element={<Processing />} />

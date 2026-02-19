@@ -433,6 +433,131 @@ app.post('/api/processing/update', async (req, res) => {
     }
 });
 
+// Add new roller and processing data (Insert after Processing)
+app.post('/api/processing/add-new', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const data = req.body;
+
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        try {
+            // 1. Check/Insert Roller Sleeve
+            let rollerSleeveId = data.rollerId;
+            const rollerCheck = await transaction.request()
+                .input('rollerId', sql.NVarChar, rollerSleeveId)
+                .query('SELECT roller_sleeve_id FROM [roller_tracking].[roller_sleeve] WHERE roller_sleeve_id = @rollerId');
+
+            if (rollerCheck.recordset.length === 0) {
+                // Insert new roller
+                await transaction.request()
+                    .input('rollerId', sql.NVarChar, rollerSleeveId)
+                    .input('rollerType', sql.NVarChar, data.rollerType)
+                    .input('rollerFunction', sql.NVarChar, data.driveType || 'Idle')
+                    .query(`INSERT INTO [roller_tracking].[roller_sleeve] (roller_sleeve_id, roller_type, roller_function, is_scrapped) 
+                            VALUES (@rollerId, @rollerType, @rollerFunction, 0)`);
+            }
+
+            // 2. Insert Full Lifecycle Record
+            // Common inputs
+            const request = transaction.request()
+                .input('rollerSleeveId', sql.NVarChar, rollerSleeveId)
+                .input('fromSiteId', sql.Int, data.siteId)
+                .input('fromCasterId', sql.Int, data.casterId)
+                .input('fromStrandId', sql.Int, data.strandId)
+                .input('fromPositionId', sql.Int, data.segmentPosition)
+                .input('fromSegmentId', sql.Int, data.segmentId)
+                .input('receivedAt', sql.DateTime2, data.incomingDate)
+                .input('receivedConfig', sql.Int, data.configuration || null)
+                .input('fromRollerPosition', sql.Int, data.incomingRollerPosition || null)
+                .input('breakoutFlag', sql.Bit, data.hasBreakout === 'Yes' ? 1 : 0)
+                .input('tonnage', sql.Int, data.segmentTonnage || null)
+                .input('receivedDiameterA', sql.Decimal(10, 3), data.incomingDiameterA)
+                .input('receivedDiameterB', sql.Decimal(10, 3), data.incomingDiameterB)
+                .input('createdByUserId', sql.Int, data.userId)
+                .input('updatedByUserId', sql.Int, data.userId)
+
+                // Processing Details
+                .input('skinPassCutYn', sql.Bit, data.skin_pass_cut_yn)
+                .input('sleeveScrapYn', sql.Bit, data.sleeve_scrap_yn)
+                .input('scrapReason', sql.NVarChar, data.scrap_reason)
+                .input('claddingYn', sql.Bit, data.cladding_yn)
+                .input('wiresUsed', sql.Int, data.wires_used)
+
+                // Outgoing Details
+                .input('outDiameterA', sql.Decimal(10, 2), data.out_diameter_a)
+                .input('outDiameterB', sql.Decimal(10, 2), data.out_diameter_b)
+                .input('outConfiguration', sql.TinyInt, data.out_configuration)
+                .input('diameterAReduceMm', sql.Decimal(10, 2), data.diameter_a_reduce_mm)
+                .input('diameterBReduceMm', sql.Decimal(10, 2), data.diameter_b_reduce_mm)
+
+                .input('processStage', sql.NVarChar, 'PROCESSED');
+
+            // Conditional inputs
+            if (data.rollerType === 'Roller') {
+                request.input('receivedJournalFlag', sql.Bit, data.haveJournal === 'Yes' ? 1 : 0)
+                    .input('receivedJournalA', sql.Decimal(10, 3), data.journalDiameterA || null)
+                    .input('receivedJournalB', sql.Decimal(10, 3), data.journalDiameterB || null)
+                    .input('driveRotaryJointChangeYn', sql.Bit, data.drive_rotary_joint_change_yn)
+                    .input('idleRotaryJointChangeOpYn', sql.Bit, data.idle_rotary_joint_change_op_yn)
+                    .input('idleRotaryJointChangeDriveYn', sql.Bit, data.idle_rotary_joint_change_drive_yn)
+                    .input('haveJournalYn', sql.Bit, data.have_journal_yn)
+                    .input('outJournalDiameterA', sql.Decimal(10, 2), data.out_journal_diameter_a)
+                    .input('outJournalDiameterB', sql.Decimal(10, 2), data.out_journal_diameter_b);
+            } else {
+                request.input('axleId', sql.Int, data.axleId) // Using same axle ID for received and outgoing if new?
+                    .input('receivedAxleId', sql.Int, data.axleId)
+                    .input('isNewAxleYn', sql.Bit, data.is_new_axle_yn)
+                    .input('axleStraighteningYn', sql.Bit, data.axle_straightening_yn);
+            }
+
+            // Build the query
+            let columns = `
+                roller_sleeve_id, from_site_id, from_caster_id, from_strand_id, 
+                from_position_id, from_segment_id, received_at, received_config, 
+                from_roller_position, breakout_flag, tonnage, received_diameter_a, received_diameter_b, 
+                created_by_user_id, updated_by_user_id, process_stage,
+                is_skin_cut, sleeve_scrap_yn, scrap_reason, is_cladded, wires_used,
+                out_diameter_a, out_diameter_b, out_configuration, diameter_a_reduce_mm, diameter_b_reduce_mm
+            `;
+            let values = `
+                @rollerSleeveId, @fromSiteId, @fromCasterId, @fromStrandId,
+                @fromPositionId, @fromSegmentId, @receivedAt, @receivedConfig,
+                @fromRollerPosition, @breakoutFlag, @tonnage, @receivedDiameterA, @receivedDiameterB,
+                @createdByUserId, @updatedByUserId, @processStage,
+                @skinPassCutYn, @sleeveScrapYn, @scrapReason, @claddingYn, @wiresUsed,
+                @outDiameterA, @outDiameterB, @outConfiguration, @diameterAReduceMm, @diameterBReduceMm
+            `;
+
+            if (data.rollerType === 'Roller') {
+                columns += `, received_journal_flag, received_journal_a, received_journal_b,
+                              drive_rotary_joint_change_yn, idle_rotary_joint_change_op_yn, idle_rotary_joint_change_drive_yn,
+                              have_journal_yn, out_journal_diameter_a, out_journal_diameter_b`;
+                values += `, @receivedJournalFlag, @receivedJournalA, @receivedJournalB,
+                             @driveRotaryJointChangeYn, @idleRotaryJointChangeOpYn, @idleRotaryJointChangeDriveYn,
+                             @haveJournalYn, @outJournalDiameterA, @outJournalDiameterB`;
+            } else {
+                columns += `, received_axle_id, axle_id, is_new_axle_yn, axle_straightening_yn`;
+                values += `, @receivedAxleId, @axleId, @isNewAxleYn, @axleStraighteningYn`;
+            }
+
+            await request.query(`INSERT INTO [roller_tracking].[roller_lifecycle] (${columns}) VALUES (${values})`);
+
+            await transaction.commit();
+            res.json({ success: true, message: 'New roller and processing data inserted successfully' });
+
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
+
+    } catch (err) {
+        console.error('Insert after processing error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {

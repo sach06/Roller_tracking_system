@@ -130,6 +130,14 @@ const ProcessingDetails = () => {
                 if (!axleId) newErrors.axleId = 'Required';
                 if (!isNewAxle && !axleStraightening) newErrors.axleStraightening = 'Required for existing axle';
             }
+
+            // Validate Outgoing Diameter Range (95-200mm)
+            if (outDiameterA && (parseFloat(outDiameterA) < 95 || parseFloat(outDiameterA) > 200)) {
+                newErrors.outDiameterA = 'Must be between 95-200 mm';
+            }
+            if (outDiameterB && (parseFloat(outDiameterB) < 95 || parseFloat(outDiameterB) > 200)) {
+                newErrors.outDiameterB = 'Must be between 95-200 mm';
+            }
         }
 
         setErrors(newErrors);

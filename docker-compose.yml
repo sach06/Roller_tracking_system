@@ -10,7 +10,7 @@ services:
     environment:
       - PORT=3001
       - DB_SERVER=host.docker.internal,55003
-      - DB_DATABASE=RollerTrackingDB
+      # - DB_DATABASE=RollerTracking 
       # Replace below if using SQL Auth, comment out for localhost access
       # - DB_USER=your_user
       # - DB_PASSWORD=your_password
