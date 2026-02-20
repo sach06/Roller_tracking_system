@@ -14,7 +14,7 @@ const Login = () => {
     useEffect(() => {
         const user = localStorage.getItem('user');
         if (user) {
-            navigate('/main');
+            navigate('/');
         }
         fetchSites();
     }, [navigate]);
@@ -44,7 +44,7 @@ const Login = () => {
                     site_id: selectedSiteObj?.site_id
                 };
                 localStorage.setItem('user', JSON.stringify(userData));
-                navigate('/main');
+                navigate('/');
             }
         } catch (err) {
             setError('Invalid credentials');

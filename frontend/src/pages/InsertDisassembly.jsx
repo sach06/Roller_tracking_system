@@ -234,7 +234,7 @@ const InsertDisassembly = () => {
             const response = await axios.post('/api/insert-disassembly', formData);
             if (response.data.success) {
                 alert('Data submitted successfully!');
-                navigate('/main');
+                navigate('/');
             }
         } catch (err) {
             alert('Error submitting data: ' + err.message);

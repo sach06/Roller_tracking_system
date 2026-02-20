@@ -570,6 +570,78 @@ app.get('/api/cladding-wires', async (req, res) => {
     }
 });
 
+// Register new roller/sleeve (Initial stock/new entity)
+app.post('/api/rollers/register', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const data = req.body;
+
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        try {
+            // 1. Insert into roller_sleeve
+            await transaction.request()
+                .input('rollerId', sql.NVarChar, data.rollerId)
+                .input('rollerType', sql.NVarChar, data.rollerType)
+                .input('rollerFunction', sql.NVarChar, data.rollerFunction)
+                .query(`INSERT INTO [roller_tracking].[roller_sleeve] 
+                        (roller_sleeve_id, roller_type, roller_function, is_scrapped) 
+                        VALUES (@rollerId, @rollerType, @rollerFunction, 0)`);
+
+            // 1b. If new axle, insert into axle table
+            if (data.rollerType === 'Sleeve' && data.isNewAxle) {
+                await transaction.request()
+                    .input('axleId', sql.NVarChar, data.axle_id)
+                    .query(`INSERT INTO [roller_tracking].[axle] (axle_id, is_scrapped) 
+                            VALUES (@axleId, 0)`);
+            }
+
+            // 2. Insert into roller_lifecycle (Initial record with outgoing details)
+            const request = transaction.request()
+                .input('rollerSleeveId', sql.NVarChar, data.rollerId)
+                .input('createdByUserId', sql.Int, data.userId)
+                .input('processStage', sql.NVarChar, 'PROCESSED')
+                .input('outDiameterA', sql.Decimal(10, 3), data.out_diameter_a)
+                .input('outDiameterB', sql.Decimal(10, 3), data.out_diameter_b)
+                .input('outConfig', sql.Int, data.out_configuration)
+                .input('siteId', sql.Int, data.siteId);
+
+            let columns = `roller_sleeve_id, created_by_user_id, updated_by_user_id, process_stage, 
+                           dispatched_diameter_a, dispatched_diameter_b, dispatched_config, from_site_id`;
+            let values = `@rollerSleeveId, @createdByUserId, @createdByUserId, @processStage, 
+                          @outDiameterA, @outDiameterB, @outConfig, @siteId`;
+
+            if (data.rollerType === 'Roller') {
+                request.input('outJournalFlag', sql.Bit, data.have_journal_yn)
+                    .input('outJournalA', sql.Decimal(10, 3), data.out_journal_diameter_a)
+                    .input('outJournalB', sql.Decimal(10, 3), data.out_journal_diameter_b);
+
+                columns += `, dispatched_journal_flag, dispatched_journal_a, dispatched_journal_b`;
+                values += `, @outJournalFlag, @outJournalA, @outJournalB`;
+            } else {
+                request.input('dispatchedAxleId', sql.NVarChar, data.axle_id)
+                    .input('axleStraightFlag', sql.Bit, data.isNewAxle ? 0 : data.axle_straight_flag); // New axle = no straightening
+
+                columns += `, dispatched_axle_id, dispatched_axle_straight_flag`;
+                values += `, @dispatchedAxleId, @axleStraightFlag`;
+            }
+
+            await request.query(`INSERT INTO [roller_tracking].[roller_lifecycle] (${columns}) 
+                                VALUES (${values})`);
+
+            await transaction.commit();
+            res.json({ success: true, message: 'New entity registered successfully' });
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
+    } catch (err) {
+        console.error('Register roller error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
     try {
