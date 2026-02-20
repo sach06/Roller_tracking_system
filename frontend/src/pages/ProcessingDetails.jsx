@@ -201,7 +201,8 @@ const ProcessingDetails = () => {
             const response = await axios.post('/api/processing/update', formData);
             if (response.data.success) {
                 alert('Processing data submitted successfully!');
-                navigate('/processing');
+                resetProcessingFields(); // Silent reset
+                fetchLifecycleData(); // Refresh data
             }
         } catch (err) {
             console.error('Submit Error:', err);
@@ -211,27 +212,31 @@ const ProcessingDetails = () => {
         setShowConfirmDialog(false);
     };
 
+    const resetProcessingFields = () => {
+        // Reset process fields
+        setSkinPassCut('');
+        setSleeveScrap('');
+        setScrapReason('');
+        setCladding('');
+        setCladdingWireId('');
+        setDriveRotaryJointChange('');
+        setIdleRotaryJointChangeOp('');
+        setIdleRotaryJointChangeDrive('');
+        setOutDiameterA('');
+        setOutDiameterB('');
+        setHaveJournal('');
+        setOutJournalDiameterA('');
+        setOutJournalDiameterB('');
+        setOutConfiguration('');
+        setAxleId('');
+        setIsNewAxle(false);
+        setAxleStraightening('');
+        setErrors({});
+    };
+
     const handleCancel = () => {
         if (window.confirm('Are you sure you want to clear the form?')) {
-            // Reset process fields
-            setSkinPassCut('');
-            setSleeveScrap('');
-            setScrapReason('');
-            setCladding('');
-            setCladdingWireId('');
-            setDriveRotaryJointChange('');
-            setIdleRotaryJointChangeOp('');
-            setIdleRotaryJointChangeDrive('');
-            setOutDiameterA('');
-            setOutDiameterB('');
-            setHaveJournal('');
-            setOutJournalDiameterA('');
-            setOutJournalDiameterB('');
-            setOutConfiguration('');
-            setAxleId('');
-            setIsNewAxle(false);
-            setAxleStraightening('');
-            setErrors({});
+            resetProcessingFields();
         }
     };
 

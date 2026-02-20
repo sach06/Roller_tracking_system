@@ -59,11 +59,25 @@ app.get('/api/sites', async (req, res) => {
 });
 
 // Get existing rollers
+// Get existing rollers with filters
 app.get('/api/rollers/existing', async (req, res) => {
     try {
         const pool = await getPool();
-        const result = await pool.request()
-            .query('SELECT roller_sleeve_id, roller_type, roller_function FROM [roller_tracking].[roller_sleeve] WHERE is_scrapped = 0 ORDER BY roller_type, roller_function, roller_sleeve_id');
+        const { rollerType, rollerFunction } = req.query;
+        let query = 'SELECT roller_sleeve_id, roller_type, roller_function FROM [roller_tracking].[roller_sleeve] WHERE is_scrapped = 0';
+        const request = pool.request();
+
+        if (rollerType) {
+            query += ' AND roller_type = @rollerType';
+            request.input('rollerType', sql.NVarChar, rollerType);
+        }
+        if (rollerFunction) {
+            query += ' AND roller_function = @rollerFunction';
+            request.input('rollerFunction', sql.NVarChar, rollerFunction);
+        }
+
+        query += ' ORDER BY roller_type, roller_function, roller_sleeve_id';
+        const result = await request.query(query);
         res.json({ success: true, rollers: result.recordset });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -100,13 +114,27 @@ app.get('/api/rollers/:id/counts', async (req, res) => {
 app.get('/api/casters', async (req, res) => {
     try {
         const pool = await getPool();
-        const result = await pool.request()
-            .input('siteName', sql.NVarChar, req.query.site)
-            .query(`SELECT c.caster_id, c.caster_name, c.caster_code, c.caster_cluster_id
-                    FROM [roller_tracking].[caster] c
-                    JOIN [roller_tracking].[site] s ON c.site_id = s.site_id
-                    WHERE s.site_name = @siteName AND c.is_active = 1 
-                    ORDER BY c.caster_name`);
+        const { site, userId } = req.query;
+        let query = `SELECT DISTINCT c.caster_id, c.caster_name, c.caster_code, c.caster_cluster_id, s.site_id
+                     FROM [roller_tracking].[caster] c
+                     JOIN [roller_tracking].[site] s ON c.site_id = s.site_id`;
+
+        const request = pool.request();
+        let whereClauses = ['c.is_active = 1'];
+
+        if (site) {
+            whereClauses.push('s.site_name = @siteName');
+            request.input('siteName', sql.NVarChar, site);
+        } else if (userId) {
+            query += ` JOIN [roller_tracking].[user_site] us ON us.site_id = s.site_id`;
+            whereClauses.push('us.user_id = @userId');
+            request.input('userId', sql.Int, parseInt(userId));
+        }
+
+        query += ` WHERE ` + whereClauses.join(' AND ');
+        query += ` ORDER BY c.caster_name`;
+
+        const result = await request.query(query);
         res.json({ success: true, casters: result.recordset });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -281,6 +309,34 @@ app.get('/api/processing/rollers', async (req, res) => {
     }
 });
 
+// Helper to match existing detail fetch structure
+app.get('/api/processing/lifecycle/dummy/:lifecycleId', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('lifecycleId', sql.BigInt, req.params.lifecycleId)
+            .query(`SELECT rl.*, rs.roller_type, rs.roller_function,
+                           c.caster_name, st.strand_no, s.site_name,
+                           pos.position_no, seg.segment_no
+                    FROM [roller_tracking].[roller_lifecycle] rl
+                    JOIN [roller_tracking].[roller_sleeve] rs ON rs.roller_sleeve_id = rl.roller_sleeve_id
+                    LEFT JOIN [roller_tracking].[caster] c ON c.caster_id = rl.from_caster_id
+                    LEFT JOIN [roller_tracking].[strand] st ON st.strand_id = rl.from_strand_id
+                    LEFT JOIN [roller_tracking].[site] s ON s.site_id = rl.from_site_id
+                    LEFT JOIN [roller_tracking].[position] pos ON pos.position_id = rl.from_position_id
+                    LEFT JOIN [roller_tracking].[segment] seg ON seg.segment_id = rl.from_segment_id
+                    WHERE rl.lifecycle_id = @lifecycleId`);
+
+        if (result.recordset.length > 0) {
+            res.json({ success: true, lifecycle: result.recordset[0] });
+        } else {
+            res.status(404).json({ success: false, message: 'Lifecycle not found' });
+        }
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // Get lifecycle details for processing
 app.get('/api/processing/lifecycle/:rollerId/:lifecycleId', async (req, res) => {
     try {
@@ -289,32 +345,17 @@ app.get('/api/processing/lifecycle/:rollerId/:lifecycleId', async (req, res) => 
             .input('rollerSleeveId', sql.Int, req.params.rollerId)
             .input('lifecycleId', sql.BigInt, req.params.lifecycleId)
             .query(`SELECT TOP 1
-                        rl.lifecycle_id,
+                        rl.*,
                         rs.roller_type,
                         rs.roller_function,
-                        rl.from_site_id,
                         s.site_name,
-                        rl.from_caster_id,
                         c.caster_name,
-                        rl.from_strand_id,
                         st.strand_no,
-                        rl.from_position_id,
                         p.position_no,
-                        rl.from_segment_id,
                         seg.segment_no,
-                        rl.received_at,
-                        rl.tonnage,
-                        rl.breakout_flag,
-                        rl.received_diameter_a,
-                        rl.received_diameter_b,
-                        rl.received_journal_flag,
-                        rl.received_journal_a,
-                        rl.received_journal_b,
-                        rl.received_config,
-                        rl.received_axle_id,
-                        rl.from_roller_position,
-                        (SELECT SUM(CAST(is_skin_cut AS INT)) FROM [roller_tracking].[roller_lifecycle] WHERE roller_sleeve_id = rl.roller_sleeve_id) AS skin_cut_count,
-                        (SELECT SUM(CAST(is_cladded AS INT)) FROM [roller_tracking].[roller_lifecycle] WHERE roller_sleeve_id = rl.roller_sleeve_id) AS cladded_count
+                        cw.wire_name AS cladding_wire_name,
+                        (SELECT SUM(CAST(is_skin_cut AS INT)) FROM [roller_tracking].[roller_lifecycle] WHERE roller_sleeve_id = rl.roller_sleeve_id) AS total_skin_cut_count,
+                        (SELECT SUM(CAST(is_cladded AS INT)) FROM [roller_tracking].[roller_lifecycle] WHERE roller_sleeve_id = rl.roller_sleeve_id) AS total_cladded_count
                     FROM [roller_tracking].[roller_lifecycle] rl
                     JOIN [roller_tracking].[roller_sleeve] rs ON rs.roller_sleeve_id = rl.roller_sleeve_id
                     LEFT JOIN [roller_tracking].[site] s ON s.site_id = rl.from_site_id
@@ -322,6 +363,7 @@ app.get('/api/processing/lifecycle/:rollerId/:lifecycleId', async (req, res) => 
                     LEFT JOIN [roller_tracking].[strand] st ON st.strand_id = rl.from_strand_id
                     LEFT JOIN [roller_tracking].[position] p ON p.position_id = rl.from_position_id
                     LEFT JOIN [roller_tracking].[segment] seg ON seg.segment_id = rl.from_segment_id
+                    LEFT JOIN [roller_tracking].[cladding_wire] cw ON cw.cladding_wire_id = rl.cladding_wire_id
                     WHERE rl.roller_sleeve_id = @rollerSleeveId 
                       AND rl.lifecycle_id = @lifecycleId
                     ORDER BY rl.created_at DESC`);
@@ -772,7 +814,13 @@ app.post('/api/login', async (req, res) => {
         const result = await pool.request()
             .input('username', sql.NVarChar, username)
             .input('password', sql.NVarChar, password)
-            .query('SELECT user_id, username FROM [roller_tracking].[app_user] WHERE username = @username AND password_hash = @password AND is_active = 1');
+            .query(`SELECT u.user_id, u.username, r.role_code, s.site_id, s.site_name AS site
+                    FROM [roller_tracking].[app_user] u
+                    JOIN [roller_tracking].[user_role] ur ON ur.user_id = u.user_id
+                    JOIN [roller_tracking].[role] r ON r.role_id = ur.role_id
+                    LEFT JOIN [roller_tracking].[user_site] us ON us.user_id = u.user_id
+                    LEFT JOIN [roller_tracking].[site] s ON s.site_id = us.site_id
+                    WHERE u.username = @username AND u.password_hash = @password AND u.is_active = 1`);
 
         if (result.recordset.length > 0) {
             res.json({ success: true, user: result.recordset[0] });
@@ -780,6 +828,99 @@ app.post('/api/login', async (req, res) => {
             res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
     } catch (err) {
+        console.error('Login error:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// ===== WORKSHOP (WS) ENDPOINTS =====
+
+// Get PROCESSED rollers for workshop dispatch
+app.get('/api/ws/rollers', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .input('rollerFunction', sql.NVarChar, req.query.rollerFunction || null)
+            .query(`SELECT rl.lifecycle_id, rl.roller_sleeve_id, 
+                           rl.from_caster_id, c.caster_name,
+                           rl.from_strand_id, st.strand_no,
+                           rl.from_site_id, s.site_name,
+                           rl.received_at, rl.processed_at
+                    FROM [roller_tracking].[roller_lifecycle] rl
+                    JOIN [roller_tracking].[roller_sleeve] rs ON rs.roller_sleeve_id = rl.roller_sleeve_id
+                    LEFT JOIN [roller_tracking].[caster] c ON c.caster_id = rl.from_caster_id
+                    LEFT JOIN [roller_tracking].[strand] st ON st.strand_id = rl.from_strand_id
+                    LEFT JOIN [roller_tracking].[site] s ON s.site_id = rl.from_site_id
+                    WHERE rl.process_stage = 'PROCESSED'
+                      AND rs.roller_type = 'Roller'
+                      AND rs.is_scrapped = 0
+                      AND (@rollerFunction IS NULL OR rs.roller_function = @rollerFunction)
+                    ORDER BY rl.processed_at DESC`);
+        res.json({ success: true, rollers: result.recordset });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Get PROCESSED sleeves for workshop dispatch
+app.get('/api/ws/sleeves', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .query(`SELECT rl.lifecycle_id, rl.roller_sleeve_id,
+                           rl.from_caster_id, c.caster_name,
+                           rl.from_strand_id, st.strand_no,
+                           rl.from_site_id, s.site_name,
+                           rl.received_axle_id, rl.received_at, rl.processed_at
+                    FROM [roller_tracking].[roller_lifecycle] rl
+                    JOIN [roller_tracking].[roller_sleeve] rs ON rs.roller_sleeve_id = rl.roller_sleeve_id
+                    LEFT JOIN [roller_tracking].[caster] c ON c.caster_id = rl.from_caster_id
+                    LEFT JOIN [roller_tracking].[strand] st ON st.strand_id = rl.from_strand_id
+                    LEFT JOIN [roller_tracking].[site] s ON s.site_id = rl.from_site_id
+                    WHERE rl.process_stage = 'PROCESSED'
+                      AND rs.roller_type = 'Sleeve'
+                      AND rs.is_scrapped = 0
+                    ORDER BY rl.processed_at DESC`);
+        res.json({ success: true, sleeves: result.recordset });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Dispatch roller or sleeve from workshop
+app.post('/api/ws/dispatch', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const data = req.body;
+        const toInt = (v) => { const n = parseInt(v); return isNaN(n) ? null : n; };
+
+        await pool.request()
+            .input('lifecycleId', sql.BigInt, data.lifecycleId)
+            .input('toCasterId', sql.Int, toInt(data.toCasterId))
+            .input('toStrandId', sql.Int, toInt(data.toStrandId))
+            .input('toPositionId', sql.Int, toInt(data.toPositionId))
+            .input('toSegmentId', sql.Int, toInt(data.toSegmentId))
+            .input('toRollerPosition', sql.Int, toInt(data.toRollerPosition))
+            .input('toConfiguration', sql.Int, toInt(data.toConfiguration))
+            .input('toSiteId', sql.Int, toInt(data.toSiteId))
+            .input('updatedByUserId', sql.Int, toInt(data.userId))
+            .query(`UPDATE [roller_tracking].[roller_lifecycle]
+                    SET process_stage = 'DISPATCHED',
+                        dispatched_at = SYSDATETIME(),
+                        updated_at = SYSDATETIME(),
+                        updated_by_user_id = @updatedByUserId,
+                        to_caster_id = @toCasterId,
+                        to_strand_id = @toStrandId,
+                        to_position_id = @toPositionId,
+                        to_segment_id = @toSegmentId,
+                        to_roller_position = @toRollerPosition,
+                        to_site_id = @toSiteId,
+                        dispatched_config = @toConfiguration
+                    WHERE lifecycle_id = @lifecycleId`);
+
+        res.json({ success: true, message: 'Dispatched successfully' });
+    } catch (err) {
+        console.error('Dispatch error:', err);
         res.status(500).json({ success: false, error: err.message });
     }
 });

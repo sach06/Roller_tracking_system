@@ -16,6 +16,13 @@ const ScrapAxle = () => {
         fetchAxles();
     }, []);
 
+    const resetForm = () => {
+        setAxleId('');
+        setScrapReason('');
+        setScrapDate(new Date().toISOString().split('T')[0]);
+        setErrors({});
+    };
+
     const fetchAxles = async () => {
         try {
             const response = await axios.get('/api/axles/existing');
@@ -51,7 +58,8 @@ const ScrapAxle = () => {
             });
             if (response.data.success) {
                 alert('Axle scrapped successfully!');
-                navigate('/');
+                resetForm();
+                fetchAxles(); // Refresh list
             }
         } catch (err) {
             alert('Error scrapping axle: ' + err.message);
@@ -108,7 +116,7 @@ const ScrapAxle = () => {
 
                 <div className="action-buttons">
                     <button className="btn btn-back" onClick={() => navigate(-1)}>Back</button>
-                    <button className="btn btn-cancel" onClick={() => navigate('/')}>Cancel</button>
+                    <button className="btn btn-cancel" onClick={resetForm}>Cancel</button>
                     <button className="btn btn-submit" onClick={handleSubmit}>Submit</button>
                 </div>
             </div>

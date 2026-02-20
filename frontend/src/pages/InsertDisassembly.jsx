@@ -57,14 +57,22 @@ const InsertDisassembly = () => {
     }, []);
 
     useEffect(() => {
+        if (rollerType && driveType) {
+            fetchExistingRollers();
+        } else {
+            setExistingRollers([]);
+        }
+    }, [rollerType, driveType]);
+
+    useEffect(() => {
         if (rollerId && !isNewRoller) {
             fetchRollerCounts(rollerId);
         }
     }, [rollerId, isNewRoller]);
 
     useEffect(() => {
-        if (user?.site) {
-            fetchCasters(user.site);
+        if (user?.user_id) {
+            fetchCasters(user.user_id);
         }
     }, [user]);
 
@@ -88,7 +96,9 @@ const InsertDisassembly = () => {
 
     const fetchExistingRollers = async () => {
         try {
-            const response = await axios.get('/api/rollers/existing');
+            const response = await axios.get('/api/rollers/existing', {
+                params: { rollerType, rollerFunction: driveType }
+            });
             if (response.data.success) {
                 setExistingRollers(response.data.rollers);
             }
@@ -120,9 +130,9 @@ const InsertDisassembly = () => {
         }
     };
 
-    const fetchCasters = async (siteName) => {
+    const fetchCasters = async (userId) => {
         try {
-            const response = await axios.get('/api/casters', { params: { site: siteName } });
+            const response = await axios.get('/api/casters', { params: { userId } });
             if (response.data.success) {
                 setCasterOptions(response.data.casters);
             }
@@ -208,6 +218,29 @@ const InsertDisassembly = () => {
         return Object.keys(newErrors).length === 0;
     };
 
+    const resetForm = () => {
+        setRollerId('');
+        setIsNewRoller(false);
+        setSkinPassCount(0);
+        setCladdingCount(0);
+        setCasterId('');
+        setStrandId('');
+        setSegmentPosition('');
+        setSegmentId('');
+        setIncomingDate('');
+        setConfiguration('');
+        setIncomingRollerPosition('');
+        setHasBreakout('');
+        setHaveJournal('');
+        setJournalDiameterA('');
+        setJournalDiameterB('');
+        setSegmentTonnage('');
+        setIncomingDiameterA('');
+        setIncomingDiameterB('');
+        setAxleId('');
+        setErrors({});
+    };
+
     const handleSubmit = () => {
         if (validateForm()) {
             setShowConfirmDialog(true);
@@ -246,7 +279,7 @@ const InsertDisassembly = () => {
             const response = await axios.post('/api/insert-disassembly', formData);
             if (response.data.success) {
                 alert('Data submitted successfully!');
-                navigate('/');
+                resetForm();
             }
         } catch (err) {
             alert('Error submitting data: ' + err.message);
@@ -312,40 +345,24 @@ const InsertDisassembly = () => {
                     </div>
 
                     <div className="field-group red-field">
-                        <label>Roller ID</label>
-                        {isNewRoller ? (
-                            <input
-                                type="text"
-                                value={rollerId}
-                                onChange={(e) => setRollerId(e.target.value)}
-                                placeholder="Enter new Roller ID"
-                                className={errors.rollerId ? 'error' : ''}
-                            />
-                        ) : (
-                            <select
-                                value={rollerId}
-                                onChange={(e) => setRollerId(e.target.value)}
-                                className={errors.rollerId ? 'error' : ''}
-                            >
-                                <option value="">-- Select existing --</option>
-                                {existingRollers.map((roller, idx) => (
-                                    <option key={idx} value={roller.roller_sleeve_id}>
-                                        {roller.roller_sleeve_id}
-                                    </option>
-                                ))}
-                            </select>
-                        )}
-                        <label className="checkbox-label">
-                            <input
-                                type="checkbox"
-                                checked={isNewRoller}
-                                onChange={(e) => {
-                                    setIsNewRoller(e.target.checked);
-                                    setRollerId('');
-                                }}
-                            />
-                            New Roller
-                        </label>
+                        <label>{rollerType} ID</label>
+                        <select
+                            value={rollerId}
+                            onChange={(e) => {
+                                setRollerId(e.target.value);
+                                setIsNewRoller(false);
+                            }}
+                            className={errors.rollerId ? 'error' : ''}
+                            disabled={!driveType}
+                        >
+                            <option value="">-- Select --</option>
+                            {existingRollers.map((roller, idx) => (
+                                <option key={idx} value={roller.roller_sleeve_id}>
+                                    {roller.roller_sleeve_id}
+                                </option>
+                            ))}
+                        </select>
+                        {!driveType && <span className="hint-text">Select a roll type first</span>}
                         {errors.rollerId && <span className="error-text">{errors.rollerId}</span>}
                     </div>
                 </div>

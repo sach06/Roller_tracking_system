@@ -47,6 +47,21 @@ const ProcessingAddNew = () => {
         } catch (err) { console.error('Error fetching axles:', err); }
     };
 
+    const resetForm = () => {
+        setRollerId('');
+        setRollerFunction('');
+        setOutDiameterA('');
+        setOutDiameterB('');
+        setOutConfiguration('');
+        setHaveJournal('');
+        setOutJournalDiameterA('');
+        setOutJournalDiameterB('');
+        setAxleId('');
+        setIsNewAxle(false);
+        setAxleStraightening('');
+        setErrors({});
+    };
+
     const validateForm = () => {
         const newErrors = {};
         if (!rollerId) newErrors.rollerId = 'Required';
@@ -107,7 +122,8 @@ const ProcessingAddNew = () => {
             const response = await axios.post('/api/rollers/register', formData);
             if (response.data.success) {
                 alert('New Entity Registered Successfully!');
-                navigate('/insert-processing');
+                resetForm();
+                fetchExistingAxles();
             }
         } catch (err) {
             console.error('Registration Error:', err);
@@ -285,7 +301,7 @@ const ProcessingAddNew = () => {
 
                 <div className="action-buttons" style={{ marginTop: '40px' }}>
                     <button className="btn btn-back" onClick={() => navigate(-1)}>Back</button>
-                    <button className="btn btn-cancel" onClick={() => navigate('/insert-processing')}>Cancel</button>
+                    <button className="btn btn-cancel" onClick={resetForm}>Cancel</button>
                     <button className="btn btn-submit" onClick={handleSubmit}>Submit</button>
                 </div>
 

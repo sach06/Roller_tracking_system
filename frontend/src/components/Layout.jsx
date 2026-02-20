@@ -65,15 +65,28 @@ const Layout = () => {
                     </button>
                     {openGroup === 'insert' && (
                         <div className="nav-sub">
-                            <NavLink to="/processing-add-new" className={({ isActive }) => 'nav-sub-link' + (isActive ? ' active' : '')}>
-                                New Entry
-                            </NavLink>
-                            <NavLink to="/insert-disassembly" className={({ isActive }) => 'nav-sub-link' + (isActive ? ' active' : '')}>
-                                At Disassembly
-                            </NavLink>
-                            <NavLink to="/insert-processing" className={({ isActive }) => 'nav-sub-link' + (isActive ? ' active' : '')}>
-                                After Processing
-                            </NavLink>
+                            {(user.role_code === 'REF_OP' || user.role_code === 'REF_ADMIN') ? (
+                                <>
+                                    <NavLink to="/processing-add-new" className={({ isActive }) => 'nav-sub-link' + (isActive ? ' active' : '')}>
+                                        New Entry
+                                    </NavLink>
+                                    <NavLink to="/insert-disassembly" className={({ isActive }) => 'nav-sub-link' + (isActive ? ' active' : '')}>
+                                        At Disassembly
+                                    </NavLink>
+                                    <NavLink to="/insert-processing" className={({ isActive }) => 'nav-sub-link' + (isActive ? ' active' : '')}>
+                                        After Processing
+                                    </NavLink>
+                                </>
+                            ) : (
+                                <>
+                                    <NavLink to="/ws-axle" className={({ isActive }) => 'nav-sub-link' + (isActive ? ' active' : '')}>
+                                        Axle
+                                    </NavLink>
+                                    <NavLink to="/ws-roller" className={({ isActive }) => 'nav-sub-link' + (isActive ? ' active' : '')}>
+                                        Roller
+                                    </NavLink>
+                                </>
+                            )}
                         </div>
                     )}
 
@@ -99,30 +112,34 @@ const Layout = () => {
                         View
                     </NavLink>
 
-                    {/* ---- SCRAP (collapsible) ---- */}
-                    <button
-                        className={`nav-group-btn${isScrapActive ? ' active' : ''}`}
-                        onClick={() => toggleGroup('scrap')}
-                    >
-                        <span className="nav-icon">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" />
-                                <path d="M10 11v6" /><path d="M14 11v6" />
-                                <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                            </svg>
-                        </span>
-                        Scrap
-                        <span className={`chevron${openGroup === 'scrap' ? ' open' : ''}`}>›</span>
-                    </button>
-                    {openGroup === 'scrap' && (
-                        <div className="nav-sub">
-                            <NavLink to="/scrap-roller" className={({ isActive }) => 'nav-sub-link' + (isActive ? ' active' : '')}>
-                                Roller / Sleeve
-                            </NavLink>
-                            <NavLink to="/scrap-axle" className={({ isActive }) => 'nav-sub-link' + (isActive ? ' active' : '')}>
-                                Axle
-                            </NavLink>
-                        </div>
+                    {/* ---- SCRAP (collapsible) - Only for REF roles ---- */}
+                    {(user.role_code === 'REF_OP' || user.role_code === 'REF_ADMIN') && (
+                        <>
+                            <button
+                                className={`nav-group-btn${isScrapActive ? ' active' : ''}`}
+                                onClick={() => toggleGroup('scrap')}
+                            >
+                                <span className="nav-icon">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14H6L5 6" />
+                                        <path d="M10 11v6" /><path d="M14 11v6" />
+                                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                                    </svg>
+                                </span>
+                                Scrap
+                                <span className={`chevron${openGroup === 'scrap' ? ' open' : ''}`}>›</span>
+                            </button>
+                            {openGroup === 'scrap' && (
+                                <div className="nav-sub">
+                                    <NavLink to="/scrap-roller" className={({ isActive }) => 'nav-sub-link' + (isActive ? ' active' : '')}>
+                                        Roller / Sleeve
+                                    </NavLink>
+                                    <NavLink to="/scrap-axle" className={({ isActive }) => 'nav-sub-link' + (isActive ? ' active' : '')}>
+                                        Axle
+                                    </NavLink>
+                                </div>
+                            )}
+                        </>
                     )}
                 </nav>
 

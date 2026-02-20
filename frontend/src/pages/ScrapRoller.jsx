@@ -54,8 +54,8 @@ const ScrapRoller = () => {
     }, []);
 
     useEffect(() => {
-        if (user?.site) {
-            fetchCasters(user.site);
+        if (user?.user_id) {
+            fetchCasters(user.user_id);
         }
     }, [user]);
 
@@ -99,9 +99,9 @@ const ScrapRoller = () => {
         }
     };
 
-    const fetchCasters = async (siteName) => {
+    const fetchCasters = async (userId) => {
         try {
-            const response = await axios.get('/api/casters', { params: { site: siteName } });
+            const response = await axios.get('/api/casters', { params: { userId } });
             if (response.data.success) {
                 setCasterOptions(response.data.casters);
             }
@@ -147,6 +147,29 @@ const ScrapRoller = () => {
         } catch (err) {
             console.error('Error fetching segment IDs:', err);
         }
+    };
+
+    const resetForm = () => {
+        setDriveType('');
+        setRollerId('');
+        setScrapReason('');
+        setScrapDate(new Date().toISOString().split('T')[0]);
+        setCasterId('');
+        setStrandId('');
+        setSegmentPosition('');
+        setSegmentId('');
+        setIncomingDate('');
+        setConfiguration('');
+        setIncomingRollerPosition('');
+        setHasBreakout('');
+        setHaveJournal('');
+        setJournalDiameterA('');
+        setJournalDiameterB('');
+        setSegmentTonnage('');
+        setIncomingDiameterA('');
+        setIncomingDiameterB('');
+        setAxleId('');
+        setErrors({});
     };
 
     const validateForm = () => {
@@ -223,7 +246,7 @@ const ScrapRoller = () => {
             const response = await axios.post('/api/scrap/roller-sleeve', formData);
             if (response.data.success) {
                 alert('Roller/Sleeve scrapped successfully!');
-                navigate('/');
+                resetForm();
             }
         } catch (err) {
             alert('Error scrapping: ' + err.message);
@@ -476,7 +499,7 @@ const ScrapRoller = () => {
 
                 <div className="action-buttons">
                     <button className="btn btn-back" onClick={() => navigate(-1)}>Back</button>
-                    <button className="btn btn-cancel" onClick={() => navigate('/')}>Cancel</button>
+                    <button className="btn btn-cancel" onClick={resetForm}>Cancel</button>
                     <button className="btn btn-submit" onClick={handleSubmit}>Submit</button>
                 </div>
             </div>
