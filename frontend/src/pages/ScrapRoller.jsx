@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './InsertDisassembly.css';
 
-const InsertDisassembly = () => {
+const ScrapRoller = () => {
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
 
@@ -11,13 +11,10 @@ const InsertDisassembly = () => {
     const [rollerType, setRollerType] = useState('Roller');
     const [driveType, setDriveType] = useState('');
     const [rollerId, setRollerId] = useState('');
-    const [isNewRoller, setIsNewRoller] = useState(false);
+    const [scrapReason, setScrapReason] = useState('');
+    const [scrapDate, setScrapDate] = useState(new Date().toISOString().split('T')[0]);
     const [existingRollers, setExistingRollers] = useState([]);
     const [existingAxles, setExistingAxles] = useState([]);
-
-    // Counts
-    const [skinPassCount, setSkinPassCount] = useState(0);
-    const [claddingCount, setCladdingCount] = useState(0);
 
     // Incoming details - Dropdowns
     const [casterOptions, setCasterOptions] = useState([]);
@@ -55,12 +52,6 @@ const InsertDisassembly = () => {
         fetchExistingRollers();
         fetchAxles();
     }, []);
-
-    useEffect(() => {
-        if (rollerId && !isNewRoller) {
-            fetchRollerCounts(rollerId);
-        }
-    }, [rollerId, isNewRoller]);
 
     useEffect(() => {
         if (user?.site) {
@@ -108,18 +99,6 @@ const InsertDisassembly = () => {
         }
     };
 
-    const fetchRollerCounts = async (id) => {
-        try {
-            const response = await axios.get(`/api/rollers/${id}/counts`);
-            if (response.data.success) {
-                setSkinPassCount(response.data.skinPassCount || 0);
-                setCladdingCount(response.data.claddingCount || 0);
-            }
-        } catch (err) {
-            console.error('Error fetching counts:', err);
-        }
-    };
-
     const fetchCasters = async (siteName) => {
         try {
             const response = await axios.get('/api/casters', { params: { site: siteName } });
@@ -158,6 +137,7 @@ const InsertDisassembly = () => {
             if (!strandId) return;
             const response = await axios.get('/api/segment-ids', {
                 params: {
+                    strandId: strandId,
                     positionId: positionId
                 }
             });
@@ -174,6 +154,9 @@ const InsertDisassembly = () => {
 
         if (!driveType) newErrors.driveType = 'Required';
         if (!rollerId) newErrors.rollerId = 'Required';
+        if (!scrapReason) newErrors.scrapReason = 'Required';
+        if (!scrapDate) newErrors.scrapDate = 'Required';
+
         if (!casterId) newErrors.casterId = 'Required';
         if (!strandId) newErrors.strandId = 'Required';
         if (!segmentPosition) newErrors.segmentPosition = 'Required';
@@ -182,26 +165,22 @@ const InsertDisassembly = () => {
         if (!configuration) newErrors.configuration = 'Required';
         if (!incomingRollerPosition) newErrors.incomingRollerPosition = 'Required';
         if (!hasBreakout) newErrors.hasBreakout = 'Required';
-        // Have Journal only required for Roller type, not Sleeve
         if (rollerType === 'Roller' && !haveJournal) newErrors.haveJournal = 'Required';
 
-        // Validate diameter range
         if (incomingDiameterA && (parseFloat(incomingDiameterA) < 95 || parseFloat(incomingDiameterA) > 200)) {
-            newErrors.incomingDiameterA = 'Must be between 95-200 mm';
+            newErrors.incomingDiameterA = 'Must be 95-200mm';
         }
         if (incomingDiameterB && (parseFloat(incomingDiameterB) < 95 || parseFloat(incomingDiameterB) > 200)) {
-            newErrors.incomingDiameterB = 'Must be between 95-200 mm';
+            newErrors.incomingDiameterB = 'Must be 95-200mm';
         }
 
-        // Journal fields required if haveJournal is Yes (only for Roller type)
         if (rollerType === 'Roller' && haveJournal === 'Yes') {
-            if (!journalDiameterA) newErrors.journalDiameterA = 'Required when journal is Yes';
-            if (!journalDiameterB) newErrors.journalDiameterB = 'Required when journal is Yes';
+            if (!journalDiameterA) newErrors.journalDiameterA = 'Required';
+            if (!journalDiameterB) newErrors.journalDiameterB = 'Required';
         }
 
-        // Axle ID required for Sleeve
         if (rollerType === 'Sleeve' && !axleId) {
-            newErrors.axleId = 'Required for Sleeve';
+            newErrors.axleId = 'Required';
         }
 
         setErrors(newErrors);
@@ -216,14 +195,12 @@ const InsertDisassembly = () => {
 
     const confirmSubmit = async () => {
         try {
-            const user = JSON.parse(localStorage.getItem('user'));
             const formData = {
                 rollerType,
                 driveType,
                 rollerId,
-                isNewRoller,
-                skinPassCount,
-                claddingCount,
+                scrapReason,
+                scrapDate,
                 siteId: user?.site_id,
                 casterId,
                 strandId,
@@ -243,54 +220,29 @@ const InsertDisassembly = () => {
                 userId: user?.user_id
             };
 
-            const response = await axios.post('/api/insert-disassembly', formData);
+            const response = await axios.post('/api/scrap/roller-sleeve', formData);
             if (response.data.success) {
-                alert('Data submitted successfully!');
+                alert('Roller/Sleeve scrapped successfully!');
                 navigate('/');
             }
         } catch (err) {
-            alert('Error submitting data: ' + err.message);
+            alert('Error scrapping: ' + err.message);
         }
         setShowConfirmDialog(false);
     };
 
-    const handleCancel = () => {
-        if (window.confirm('Are you sure you want to clear the form?')) {
-            // Reset all fields
-            setDriveType('');
-            setRollerId('');
-            setIsNewRoller(false);
-            setCasterId('');
-            setStrandId('');
-            setSegmentPosition('');
-            setSegmentId('');
-            setIncomingDate('');
-            setConfiguration('');
-            setIncomingRollerPosition('');
-            setHasBreakout('');
-            setHaveJournal('');
-            setJournalDiameterA('');
-            setJournalDiameterB('');
-            setSegmentTonnage('');
-            setIncomingDiameterA('');
-            setIncomingDiameterB('');
-            setAxleId('');
-            setErrors({});
-        }
-    };
-
     return (
         <div className="insert-disassembly">
-            <h2 className="page-title">Insert at Disassembly</h2>
+            <h2 className="page-title">Insert scrap: {rollerType}</h2>
 
             <div className="form-container">
-                {/* Roller Type Selection */}
                 <div className="section-row">
                     <div className="field-group pink-field">
                         <label>Roller Type: {rollerType}</label>
                         <select value={rollerType} onChange={(e) => {
                             setRollerType(e.target.value);
                             setDriveType('');
+                            setRollerId('');
                         }}>
                             <option value="Roller">Roller</option>
                             <option value="Sleeve">Sleeve</option>
@@ -301,68 +253,62 @@ const InsertDisassembly = () => {
                         <label>{rollerType === 'Roller' ? 'Drive roll/Idle roll' : 'Idle roll'}</label>
                         <select
                             value={driveType}
-                            onChange={(e) => setDriveType(e.target.value)}
+                            onChange={(e) => { setDriveType(e.target.value); setRollerId(''); }}
                             className={errors.driveType ? 'error' : ''}
                         >
                             <option value="">-- Select --</option>
                             {rollerType === 'Roller' && <option value="Drive">Drive roll</option>}
                             <option value="Idle">Idle roll</option>
                         </select>
-                        {errors.driveType && <span className="error-text">{errors.driveType}</span>}
                     </div>
 
                     <div className="field-group red-field">
-                        <label>Roller ID</label>
-                        {isNewRoller ? (
-                            <input
-                                type="text"
-                                value={rollerId}
-                                onChange={(e) => setRollerId(e.target.value)}
-                                placeholder="Enter new Roller ID"
-                                className={errors.rollerId ? 'error' : ''}
-                            />
-                        ) : (
-                            <select
-                                value={rollerId}
-                                onChange={(e) => setRollerId(e.target.value)}
-                                className={errors.rollerId ? 'error' : ''}
-                            >
-                                <option value="">-- Select existing --</option>
-                                {existingRollers.map((roller, idx) => (
+                        <label>{rollerType} ID</label>
+                        <select
+                            value={rollerId}
+                            onChange={(e) => setRollerId(e.target.value)}
+                            className={errors.rollerId ? 'error' : ''}
+                            disabled={!driveType}
+                        >
+                            <option value="">-- Select --</option>
+                            {existingRollers
+                                .filter(r =>
+                                    r.roller_type === rollerType &&
+                                    r.roller_function === driveType
+                                )
+                                .map((roller, idx) => (
                                     <option key={idx} value={roller.roller_sleeve_id}>
                                         {roller.roller_sleeve_id}
                                     </option>
                                 ))}
-                            </select>
-                        )}
-                        <label className="checkbox-label">
-                            <input
-                                type="checkbox"
-                                checked={isNewRoller}
-                                onChange={(e) => {
-                                    setIsNewRoller(e.target.checked);
-                                    setRollerId('');
-                                }}
-                            />
-                            New Roller
-                        </label>
+                        </select>
+                        {!driveType && <span className="hint-text">Select a roll type first</span>}
                         {errors.rollerId && <span className="error-text">{errors.rollerId}</span>}
                     </div>
                 </div>
 
-                {/* Counts Display */}
                 <div className="section-row">
-                    <div className="field-group gray-field">
-                        <label>Skin pass count</label>
-                        <div className="count-display">{skinPassCount}</div>
+                    <div className="field-group pink-field">
+                        <label>Scrap reason</label>
+                        <input
+                            type="text"
+                            value={scrapReason}
+                            onChange={(e) => setScrapReason(e.target.value)}
+                            className={errors.scrapReason ? 'error' : ''}
+                            placeholder="Enter reason"
+                        />
                     </div>
-                    <div className="field-group gray-field">
-                        <label>Cladding count</label>
-                        <div className="count-display">{claddingCount}</div>
+                    <div className="field-group white-field">
+                        <label>Scraping Date</label>
+                        <input
+                            type="date"
+                            value={scrapDate}
+                            onChange={(e) => setScrapDate(e.target.value)}
+                            className={errors.scrapDate ? 'error' : ''}
+                        />
                     </div>
                 </div>
 
-                {/* Incoming Details Section */}
                 <div className="section-header">Incoming details</div>
 
                 <div className="section-row">
@@ -384,7 +330,6 @@ const InsertDisassembly = () => {
                                 </option>
                             ))}
                         </select>
-                        {errors.casterId && <span className="error-text">{errors.casterId}</span>}
                     </div>
                     <div className="field-group pink-field">
                         <label>Strand ID</label>
@@ -401,7 +346,6 @@ const InsertDisassembly = () => {
                                 </option>
                             ))}
                         </select>
-                        {errors.strandId && <span className="error-text">{errors.strandId}</span>}
                     </div>
                 </div>
 
@@ -421,7 +365,6 @@ const InsertDisassembly = () => {
                                 </option>
                             ))}
                         </select>
-                        {errors.segmentPosition && <span className="error-text">{errors.segmentPosition}</span>}
                     </div>
                     <div className="field-group pink-field">
                         <label>Segment ID</label>
@@ -438,7 +381,6 @@ const InsertDisassembly = () => {
                                 </option>
                             ))}
                         </select>
-                        {errors.segmentId && <span className="error-text">{errors.segmentId}</span>}
                     </div>
                     <div className="field-group white-field">
                         <label>Incoming Date</label>
@@ -448,145 +390,25 @@ const InsertDisassembly = () => {
                             onChange={(e) => setIncomingDate(e.target.value)}
                             className={errors.incomingDate ? 'error' : ''}
                         />
-                        {errors.incomingDate && <span className="error-text">{errors.incomingDate}</span>}
                     </div>
                 </div>
 
                 <div className="section-row">
                     <div className="field-group pink-field">
                         <label>Configuration</label>
-                        <select
-                            value={configuration}
-                            onChange={(e) => setConfiguration(e.target.value)}
-                            className={errors.configuration ? 'error' : ''}
-                        >
+                        <select value={configuration} onChange={(e) => setConfiguration(e.target.value)}>
                             <option value="">-- Select --</option>
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="3">3</option>
-                            <option value="4">4</option>
-                            <option value="5">5</option>
+                            {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}</option>)}
                         </select>
-                        {errors.configuration && <span className="error-text">{errors.configuration}</span>}
                     </div>
                     <div className="field-group white-field">
-                        <label>Segment Tonnage</label>
-                        <input
-                            type="number"
-                            step="0.01"
-                            value={segmentTonnage}
-                            onChange={(e) => setSegmentTonnage(e.target.value)}
-                            placeholder="Enter tonnage"
-                        />
-                    </div>
-                    <div className="field-group pink-field">
-                        <label>Breakout (Y/N)</label>
-                        <select
-                            value={hasBreakout}
-                            onChange={(e) => setHasBreakout(e.target.value)}
-                            className={errors.hasBreakout ? 'error' : ''}
-                        >
-                            <option value="">-- Select --</option>
-                            <option value="Yes">Yes</option>
-                            <option value="No">No</option>
-                        </select>
-                        {errors.hasBreakout && <span className="error-text">{errors.hasBreakout}</span>}
-                    </div>
-                </div>
-
-                <div className="section-row">
-                    <div className="field-group pink-field">
-                        <label>Incoming Roller Position (1-14)</label>
-                        <select
-                            value={incomingRollerPosition}
-                            onChange={(e) => setIncomingRollerPosition(e.target.value)}
-                            className={errors.incomingRollerPosition ? 'error' : ''}
-                        >
-                            <option value="">-- Select --</option>
-                            {[...Array(14)].map((_, i) => (
-                                <option key={i} value={i + 1}>{i + 1}</option>
-                            ))}
-                        </select>
-                        {errors.incomingRollerPosition && <span className="error-text">{errors.incomingRollerPosition}</span>}
-                    </div>
-                    <div className="field-group white-field">
-                        <label>Incoming Diameter(A) (95-200mm)</label>
-                        <input
-                            type="number"
-                            step="0.01"
-                            value={incomingDiameterA}
-                            onChange={(e) => setIncomingDiameterA(e.target.value)}
-                            placeholder="95-200"
-                            className={errors.incomingDiameterA ? 'error' : ''}
-                        />
-                        {errors.incomingDiameterA && <span className="error-text">{errors.incomingDiameterA}</span>}
-                    </div>
-                    <div className="field-group white-field">
-                        <label>Incoming Diameter(B) (95-200mm)</label>
-                        <input
-                            type="number"
-                            step="0.01"
-                            value={incomingDiameterB}
-                            onChange={(e) => setIncomingDiameterB(e.target.value)}
-                            placeholder="95-200"
-                            className={errors.incomingDiameterB ? 'error' : ''}
-                        />
-                        {errors.incomingDiameterB && <span className="error-text">{errors.incomingDiameterB}</span>}
-                    </div>
-                </div>
-
-                {/* Have Journal - Only show for Roller type, not Sleeve */}
-                {rollerType === 'Roller' && (
-                    <div className="section-row">
-                        <div className="field-group pink-field">
-                            <label>Have Journal (Y/N)</label>
-                            <select
-                                value={haveJournal}
-                                onChange={(e) => setHaveJournal(e.target.value)}
-                                className={errors.haveJournal ? 'error' : ''}
-                            >
+                        <label>{rollerType === 'Roller' ? 'Incoming Roller Position' : 'Axle ID'}</label>
+                        {rollerType === 'Roller' ? (
+                            <select value={incomingRollerPosition} onChange={(e) => setIncomingRollerPosition(e.target.value)}>
                                 <option value="">-- Select --</option>
-                                <option value="Yes">Yes</option>
-                                <option value="No">No</option>
+                                {[...Array(14)].map((_, i) => <option key={i} value={i + 1}>{i + 1}</option>)}
                             </select>
-                            {errors.haveJournal && <span className="error-text">{errors.haveJournal}</span>}
-                        </div>
-                        {haveJournal === 'Yes' && (
-                            <>
-                                <div className="field-group white-field">
-                                    <label>Journal Diameter (A)</label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={journalDiameterA}
-                                        onChange={(e) => setJournalDiameterA(e.target.value)}
-                                        placeholder="Enter diameter"
-                                        className={errors.journalDiameterA ? 'error' : ''}
-                                    />
-                                    {errors.journalDiameterA && <span className="error-text">{errors.journalDiameterA}</span>}
-                                </div>
-                                <div className="field-group white-field">
-                                    <label>Journal Diameter (B)</label>
-                                    <input
-                                        type="number"
-                                        step="0.01"
-                                        value={journalDiameterB}
-                                        onChange={(e) => setJournalDiameterB(e.target.value)}
-                                        placeholder="Enter diameter"
-                                        className={errors.journalDiameterB ? 'error' : ''}
-                                    />
-                                    {errors.journalDiameterB && <span className="error-text">{errors.journalDiameterB}</span>}
-                                </div>
-                            </>
-                        )}
-                    </div>
-                )}
-
-                {/* Axle ID for Sleeve */}
-                {rollerType === 'Sleeve' && (
-                    <div className="section-row">
-                        <div className="field-group pink-field">
-                            <label>Axle ID</label>
+                        ) : (
                             <select
                                 value={axleId}
                                 onChange={(e) => setAxleId(e.target.value)}
@@ -599,37 +421,73 @@ const InsertDisassembly = () => {
                                     </option>
                                 ))}
                             </select>
-                            {errors.axleId && <span className="error-text">{errors.axleId}</span>}
+                        )}
+                        {rollerType === 'Sleeve' && errors.axleId && <span className="error-text">{errors.axleId}</span>}
+                    </div>
+                    <div className="field-group pink-field">
+                        <label>Breakout (Y/N)</label>
+                        <select value={hasBreakout} onChange={(e) => setHasBreakout(e.target.value)}>
+                            <option value="">-- Select --</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div className="section-row">
+                    <div className="field-group white-field">
+                        <label>Incoming Diameter(A)</label>
+                        <input type="number" step="0.01" value={incomingDiameterA} onChange={(e) => setIncomingDiameterA(e.target.value)} />
+                    </div>
+                    <div className="field-group white-field">
+                        <label>Incoming Diameter(B)</label>
+                        <input type="number" step="0.01" value={incomingDiameterB} onChange={(e) => setIncomingDiameterB(e.target.value)} />
+                    </div>
+                    <div className="field-group white-field">
+                        <label>Segment Tonnage</label>
+                        <input type="number" step="0.01" value={segmentTonnage} onChange={(e) => setSegmentTonnage(e.target.value)} />
+                    </div>
+                </div>
+
+                {rollerType === 'Roller' && (
+                    <div className="section-row">
+                        <div className="field-group pink-field">
+                            <label>Have Journal (Y/N)</label>
+                            <select value={haveJournal} onChange={(e) => setHaveJournal(e.target.value)}>
+                                <option value="">-- Select --</option>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
                         </div>
+                        {haveJournal === 'Yes' && (
+                            <>
+                                <div className="field-group white-field">
+                                    <label>Journal Diameter (A)</label>
+                                    <input type="number" step="0.01" value={journalDiameterA} onChange={(e) => setJournalDiameterA(e.target.value)} />
+                                </div>
+                                <div className="field-group white-field">
+                                    <label>Journal Diameter (B)</label>
+                                    <input type="number" step="0.01" value={journalDiameterB} onChange={(e) => setJournalDiameterB(e.target.value)} />
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
 
-                {/* Action Buttons */}
                 <div className="action-buttons">
-                    <button className="btn btn-back" onClick={() => navigate(-1)}>
-                        Back
-                    </button>
-                    <button className="btn btn-cancel" onClick={handleCancel}>
-                        Cancel
-                    </button>
-                    <button className="btn btn-submit" onClick={handleSubmit}>
-                        Submit
-                    </button>
+                    <button className="btn btn-back" onClick={() => navigate(-1)}>Back</button>
+                    <button className="btn btn-cancel" onClick={() => navigate('/')}>Cancel</button>
+                    <button className="btn btn-submit" onClick={handleSubmit}>Submit</button>
                 </div>
             </div>
 
-            {/* Confirmation Dialog */}
             {showConfirmDialog && (
                 <div className="modal-overlay">
                     <div className="modal-dialog">
-                        <p>Are you sure to submit data?</p>
+                        <p>Are you sure to scrap this {rollerType.toLowerCase()}?</p>
                         <div className="modal-buttons">
-                            <button className="btn btn-cancel" onClick={() => setShowConfirmDialog(false)}>
-                                Cancel
-                            </button>
-                            <button className="btn btn-submit" onClick={confirmSubmit}>
-                                Submit
-                            </button>
+                            <button className="btn btn-cancel" onClick={() => setShowConfirmDialog(false)}>Cancel</button>
+                            <button className="btn btn-submit" onClick={confirmSubmit}>Confirm</button>
                         </div>
                     </div>
                 </div>
@@ -638,4 +496,4 @@ const InsertDisassembly = () => {
     );
 };
 
-export default InsertDisassembly;
+export default ScrapRoller;
