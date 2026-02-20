@@ -41,9 +41,6 @@ const InsertProcessing = () => {
         navigate(`/processing-details/${rollerId}/${lifecycleId}`);
     };
 
-    const handleAddNew = () => {
-        navigate('/processing-add-new');
-    };
 
     return (
         <div className="insert-processing">
@@ -83,9 +80,6 @@ const InsertProcessing = () => {
                     <div className="button-group">
                         <button className="btn btn-show" onClick={handleShow} disabled={!driveType || loading}>
                             {loading ? 'Loading...' : 'Show'}
-                        </button>
-                        <button className="btn btn-add-new" onClick={handleAddNew}>
-                            Add new
                         </button>
                     </div>
                 </div>

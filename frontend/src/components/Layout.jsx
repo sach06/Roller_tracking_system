@@ -19,7 +19,7 @@ const Layout = () => {
 
     // Auto-expand based on current route
     useEffect(() => {
-        if (location.pathname.startsWith('/insert')) {
+        if (location.pathname.startsWith('/insert') || location.pathname.startsWith('/processing-add-new')) {
             setOpenGroup('insert');
         } else if (location.pathname.startsWith('/scrap')) {
             setOpenGroup('scrap');
@@ -37,7 +37,7 @@ const Layout = () => {
 
     if (!user) return null;
 
-    const isInsertActive = location.pathname.startsWith('/insert');
+    const isInsertActive = location.pathname.startsWith('/insert') || location.pathname === '/processing-add-new';
     const isScrapActive = location.pathname.startsWith('/scrap');
 
     return (
@@ -65,6 +65,9 @@ const Layout = () => {
                     </button>
                     {openGroup === 'insert' && (
                         <div className="nav-sub">
+                            <NavLink to="/processing-add-new" className={({ isActive }) => 'nav-sub-link' + (isActive ? ' active' : '')}>
+                                New Entry
+                            </NavLink>
                             <NavLink to="/insert-disassembly" className={({ isActive }) => 'nav-sub-link' + (isActive ? ' active' : '')}>
                                 At Disassembly
                             </NavLink>
