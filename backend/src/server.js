@@ -89,13 +89,13 @@ app.get('/api/rollers/:id/counts', async (req, res) => {
     try {
         const pool = await getPool();
         const skinPassResult = await pool.request()
-            .input('rollerId', sql.NVarChar, req.params.id)
+            .input('rollerId', sql.Int, parseInt(req.params.id))
             .query(`SELECT SUM(CASE WHEN is_skin_cut = 1 THEN 1 ELSE 0 END) AS skin_cut_count 
                     FROM [roller_tracking].[roller_lifecycle] 
                     WHERE roller_sleeve_id = @rollerId`);
 
         const claddingResult = await pool.request()
-            .input('rollerId', sql.NVarChar, req.params.id)
+            .input('rollerId', sql.Int, parseInt(req.params.id))
             .query(`SELECT SUM(CASE WHEN is_cladded = 1 THEN 1 ELSE 0 END) AS cladded_count 
                     FROM [roller_tracking].[roller_lifecycle] 
                     WHERE roller_sleeve_id = @rollerId`);
@@ -114,7 +114,7 @@ app.get('/api/rollers/:id/counts', async (req, res) => {
 app.get('/api/casters', async (req, res) => {
     try {
         const pool = await getPool();
-        const { site, userId } = req.query;
+        const { site, siteId, userId } = req.query;
         let query = `SELECT DISTINCT c.caster_id, c.caster_name, c.caster_code, c.caster_cluster_id, s.site_id
                      FROM [roller_tracking].[caster] c
                      JOIN [roller_tracking].[site] s ON c.site_id = s.site_id`;
@@ -122,7 +122,10 @@ app.get('/api/casters', async (req, res) => {
         const request = pool.request();
         let whereClauses = ['c.is_active = 1'];
 
-        if (site) {
+        if (siteId) {
+            whereClauses.push('s.site_id = @siteId');
+            request.input('siteId', sql.Int, parseInt(siteId));
+        } else if (site) {
             whereClauses.push('s.site_name = @siteName');
             request.input('siteName', sql.NVarChar, site);
         } else if (userId) {
@@ -219,7 +222,7 @@ app.post('/api/insert-disassembly', async (req, res) => {
         const toDecimal = (v) => { const n = parseFloat(v); return isNaN(n) ? null : n; };
 
         await pool.request()
-            .input('rollerSleeveId', sql.NVarChar, data.rollerId)
+            .input('rollerSleeveId', sql.Int, parseInt(data.rollerId))
             .input('fromSiteId', sql.Int, toInt(data.siteId))
             .input('fromCasterId', sql.Int, toInt(data.casterId))
             .input('fromStrandId', sql.Int, toInt(data.strandId))
@@ -264,45 +267,59 @@ app.post('/api/insert-disassembly', async (req, res) => {
 app.get('/api/processing/rollers', async (req, res) => {
     try {
         const pool = await getPool();
+        const { rollerType, rollerFunction } = req.query;
+        console.log('Fetching rollers for processing:', { rollerType, rollerFunction });
+
         const result = await pool.request()
-            .input('rollerType', sql.NVarChar, req.query.rollerType)
-            .input('rollerFunction', sql.NVarChar, req.query.rollerFunction)
+            .input('rollerType', sql.NVarChar, rollerType)
+            .input('rollerFunction', sql.NVarChar, rollerFunction)
             .query(`SELECT 
                         rs.roller_sleeve_id,
                         rs.roller_type,
                         rs.roller_function,
-                        rl_current.from_site_id,
-                        rl_current.from_caster_id,
-                        rl_current.from_strand_id,
-                        rl_current.received_at,
                         rl_current.lifecycle_id,
-                        SUM(CAST(rl_all.is_skin_cut AS INT)) AS skin_cut_count,
-                        SUM(CAST(rl_all.is_cladded AS INT)) AS cladded_count
-                    FROM [roller_tracking].[roller_sleeve] rs
-                    JOIN [roller_tracking].[roller_lifecycle] rl_current
-                        ON rs.roller_sleeve_id = rl_current.roller_sleeve_id
-                    JOIN [roller_tracking].[roller_lifecycle] rl_all
-                        ON rs.roller_sleeve_id = rl_all.roller_sleeve_id
-                    WHERE 
-                        rs.is_scrapped = 0
+                        rl_current.from_site_id,
+                        s.site_name,
+                        rl_current.from_caster_id,
+                        c.caster_name,
+                        rl_current.from_strand_id,
+                        st.strand_no,
+                        rl_current.received_at,
+                        (SELECT SUM(CASE WHEN is_skin_cut = 1 THEN 1 ELSE 0 END) 
+                         FROM [roller_tracking].[roller_lifecycle] 
+                         WHERE roller_sleeve_id = rs.roller_sleeve_id) AS skin_cut_count,
+                    (SELECT SUM(CASE WHEN is_cladded = 1 THEN 1 ELSE 0 END) 
+                     FROM [roller_tracking].[roller_lifecycle] 
+                     WHERE roller_sleeve_id = rs.roller_sleeve_id) AS cladded_count
+                FROM [roller_tracking].[roller_sleeve] rs
+                JOIN [roller_tracking].[roller_lifecycle] rl_current
+                    ON rs.roller_sleeve_id = rl_current.roller_sleeve_id
+                LEFT JOIN [roller_tracking].[site] s ON s.site_id = rl_current.from_site_id
+                LEFT JOIN [roller_tracking].[caster] c ON c.caster_id = rl_current.from_caster_id
+                LEFT JOIN [roller_tracking].[strand] st ON st.strand_id = rl_current.from_strand_id
+                WHERE rs.is_scrapped = 0
                         AND rs.roller_type = @rollerType
-                        AND rs.roller_function = @rollerFunction
-                        AND rl_current.created_at = (
-                            SELECT MAX(rl2.created_at)
-                            FROM [roller_tracking].[roller_lifecycle] rl2
-                            WHERE rl2.roller_sleeve_id = rs.roller_sleeve_id
+                        AND (
+                            rs.roller_function = @rollerFunction 
+                            OR rs.roller_function LIKE @rollerFunction + '%' 
+                            OR @rollerFunction LIKE rs.roller_function + '%'
+                            OR rs.roller_function LIKE '%' + @rollerFunction + '%'
+                        )
+                        AND rl_current.lifecycle_id = (
+                            SELECT MAX(lifecycle_id)
+                            FROM [roller_tracking].[roller_lifecycle]
+                            WHERE roller_sleeve_id = rs.roller_sleeve_id
                         )
                         AND rl_current.process_stage = 'RECEIVED'
-                    GROUP BY
-                        rs.roller_sleeve_id,
-                        rs.roller_type,
-                        rs.roller_function,
-                        rl_current.from_site_id,
-                        rl_current.from_caster_id,
-                        rl_current.from_strand_id,
-                        rl_current.received_at,
-                        rl_current.lifecycle_id
                     ORDER BY rs.roller_sleeve_id`);
+
+        console.log(`Found ${result.recordset.length} rollers matching criteria.`);
+
+        if (result.recordset.length === 0) {
+            const debugCheck = await pool.request().query(`SELECT COUNT(*) as total FROM [roller_tracking].[roller_lifecycle] WHERE process_stage = 'RECEIVED'`);
+            console.log('DEBUG: Total assets in RECEIVED stage (any type):', debugCheck.recordset[0].total);
+        }
+
         res.json({ success: true, rollers: result.recordset });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -342,7 +359,7 @@ app.get('/api/processing/lifecycle/:rollerId/:lifecycleId', async (req, res) => 
     try {
         const pool = await getPool();
         const result = await pool.request()
-            .input('rollerSleeveId', sql.Int, req.params.rollerId)
+            .input('rollerSleeveId', sql.Int, parseInt(req.params.rollerId))
             .input('lifecycleId', sql.BigInt, req.params.lifecycleId)
             .query(`SELECT TOP 1
                         rl.*,
@@ -354,8 +371,15 @@ app.get('/api/processing/lifecycle/:rollerId/:lifecycleId', async (req, res) => 
                         p.position_no,
                         seg.segment_no,
                         cw.wire_name AS cladding_wire_name,
-                        (SELECT SUM(CAST(is_skin_cut AS INT)) FROM [roller_tracking].[roller_lifecycle] WHERE roller_sleeve_id = rl.roller_sleeve_id) AS total_skin_cut_count,
-                        (SELECT SUM(CAST(is_cladded AS INT)) FROM [roller_tracking].[roller_lifecycle] WHERE roller_sleeve_id = rl.roller_sleeve_id) AS total_cladded_count
+                        s_to.site_name AS to_site_name,
+                        c_to.caster_name AS to_caster_name,
+                        st_to.strand_no AS to_strand_no,
+                        p_to.position_no AS to_position_no,
+                        seg_to.segment_no AS to_segment_no,
+                        (SELECT ISNULL(SUM(CAST(is_skin_cut AS INT)), 0) FROM [roller_tracking].[roller_lifecycle] WHERE roller_sleeve_id = rl.roller_sleeve_id) AS total_skin_cut_count,
+                        (SELECT ISNULL(SUM(CAST(is_skin_cut AS INT)), 0) FROM [roller_tracking].[roller_lifecycle] WHERE roller_sleeve_id = rl.roller_sleeve_id) AS skin_cut_count,
+                        (SELECT ISNULL(SUM(CAST(is_cladded AS INT)), 0) FROM [roller_tracking].[roller_lifecycle] WHERE roller_sleeve_id = rl.roller_sleeve_id) AS total_cladded_count,
+                        (SELECT ISNULL(SUM(CAST(is_cladded AS INT)), 0) FROM [roller_tracking].[roller_lifecycle] WHERE roller_sleeve_id = rl.roller_sleeve_id) AS cladded_count
                     FROM [roller_tracking].[roller_lifecycle] rl
                     JOIN [roller_tracking].[roller_sleeve] rs ON rs.roller_sleeve_id = rl.roller_sleeve_id
                     LEFT JOIN [roller_tracking].[site] s ON s.site_id = rl.from_site_id
@@ -364,6 +388,11 @@ app.get('/api/processing/lifecycle/:rollerId/:lifecycleId', async (req, res) => 
                     LEFT JOIN [roller_tracking].[position] p ON p.position_id = rl.from_position_id
                     LEFT JOIN [roller_tracking].[segment] seg ON seg.segment_id = rl.from_segment_id
                     LEFT JOIN [roller_tracking].[cladding_wire] cw ON cw.cladding_wire_id = rl.cladding_wire_id
+                    LEFT JOIN [roller_tracking].[site] s_to ON s_to.site_id = rl.to_site_id
+                    LEFT JOIN [roller_tracking].[caster] c_to ON c_to.caster_id = rl.to_caster_id
+                    LEFT JOIN [roller_tracking].[strand] st_to ON st_to.strand_id = rl.to_strand_id
+                    LEFT JOIN [roller_tracking].[position] p_to ON p_to.position_id = rl.to_position_id
+                    LEFT JOIN [roller_tracking].[segment] seg_to ON seg_to.segment_id = rl.to_segment_id
                     WHERE rl.roller_sleeve_id = @rollerSleeveId 
                       AND rl.lifecycle_id = @lifecycleId
                     ORDER BY rl.created_at DESC`);
@@ -508,15 +537,15 @@ app.post('/api/processing/add-new', async (req, res) => {
 
         try {
             // 1. Check/Insert Roller Sleeve
-            let rollerSleeveId = data.rollerId;
+            let rollerSleeveId = parseInt(data.rollerId);
             const rollerCheck = await transaction.request()
-                .input('rollerId', sql.NVarChar, rollerSleeveId)
+                .input('rollerId', sql.Int, rollerSleeveId)
                 .query('SELECT roller_sleeve_id FROM [roller_tracking].[roller_sleeve] WHERE roller_sleeve_id = @rollerId');
 
             if (rollerCheck.recordset.length === 0) {
                 // Insert new roller
                 await transaction.request()
-                    .input('rollerId', sql.NVarChar, rollerSleeveId)
+                    .input('rollerId', sql.Int, rollerSleeveId)
                     .input('rollerType', sql.NVarChar, data.rollerType)
                     .input('rollerFunction', sql.NVarChar, data.driveType || 'Idle')
                     .query(`INSERT INTO [roller_tracking].[roller_sleeve] (roller_sleeve_id, roller_type, roller_function, is_scrapped) 
@@ -528,7 +557,7 @@ app.post('/api/processing/add-new', async (req, res) => {
             const toDecimal = (v) => { const n = parseFloat(v); return isNaN(n) ? null : n; };
             const processStage = data.sleeve_scrap_yn ? 'SCRAPPED' : 'PROCESSED';
             const request = transaction.request()
-                .input('rollerSleeveId', sql.NVarChar, rollerSleeveId)
+                .input('rollerSleeveId', sql.Int, rollerSleeveId)
                 .input('fromSiteId', sql.Int, toInt(data.siteId))
                 .input('fromCasterId', sql.Int, toInt(data.casterId))
                 .input('fromStrandId', sql.Int, toInt(data.strandId))
@@ -649,7 +678,7 @@ app.post('/api/rollers/register', async (req, res) => {
         try {
             // 1. Insert into roller_sleeve
             await transaction.request()
-                .input('rollerId', sql.NVarChar, data.rollerId)
+                .input('rollerId', sql.Int, parseInt(data.rollerId))
                 .input('rollerType', sql.NVarChar, data.rollerType)
                 .input('rollerFunction', sql.NVarChar, data.rollerFunction)
                 .query(`INSERT INTO [roller_tracking].[roller_sleeve] 
@@ -666,7 +695,7 @@ app.post('/api/rollers/register', async (req, res) => {
 
             // 2. Insert into roller_lifecycle (Initial record with outgoing details)
             const request = transaction.request()
-                .input('rollerSleeveId', sql.NVarChar, data.rollerId)
+                .input('rollerSleeveId', sql.Int, parseInt(data.rollerId))
                 .input('createdByUserId', sql.Int, data.userId)
                 .input('processStage', sql.NVarChar, 'PROCESSED')
                 .input('outDiameterA', sql.Decimal(10, 3), data.out_diameter_a)
@@ -722,7 +751,7 @@ app.post('/api/scrap/roller-sleeve', async (req, res) => {
         try {
             // 1. Update roller_sleeve table (mark as scrapped, record reason)
             await transaction.request()
-                .input('rollerId', sql.NVarChar, data.rollerId)
+                .input('rollerId', sql.Int, parseInt(data.rollerId))
                 .input('scrapReason', sql.NVarChar, data.scrapReason)
                 .query(`UPDATE [roller_tracking].[roller_sleeve] 
                         SET is_scrapped = 1, 
@@ -734,7 +763,7 @@ app.post('/api/scrap/roller-sleeve', async (req, res) => {
             const toInt = (v) => { const n = parseInt(v); return isNaN(n) ? null : n; };
             const toDecimal = (v) => { const n = parseFloat(v); return isNaN(n) ? null : n; };
             const request = transaction.request()
-                .input('rollerSleeveId', sql.NVarChar, data.rollerId)
+                .input('rollerSleeveId', sql.Int, parseInt(data.rollerId))
                 .input('fromSiteId', sql.Int, toInt(data.siteId))
                 .input('fromCasterId', sql.Int, toInt(data.casterId))
                 .input('fromStrandId', sql.Int, toInt(data.strandId))
@@ -925,6 +954,65 @@ app.post('/api/ws/dispatch', async (req, res) => {
     }
 });
 
+// View all assets with latest lifecycle
+app.get('/api/view/assets', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const { rollerType, rollerFunction, assetId, date } = req.query;
+
+        let query = `
+            SELECT 
+                rs.roller_sleeve_id,
+                rs.roller_type,
+                rs.roller_function,
+                rl_current.from_site_id,
+                s.site_name,
+                rl_current.from_caster_id,
+                c.caster_name,
+                rl_current.from_strand_id,
+                st.strand_no,
+                rl_current.received_at,
+                rl_current.lifecycle_id,
+                rl_current.process_stage,
+                (SELECT SUM(CAST(is_skin_cut AS INT)) FROM [roller_tracking].[roller_lifecycle] WHERE roller_sleeve_id = rs.roller_sleeve_id) AS skin_cut_count,
+                (SELECT SUM(CAST(is_cladded AS INT)) FROM [roller_tracking].[roller_lifecycle] WHERE roller_sleeve_id = rs.roller_sleeve_id) AS cladded_count
+            FROM [roller_tracking].[roller_sleeve] rs
+            JOIN [roller_tracking].[roller_lifecycle] rl_current
+                ON rs.roller_sleeve_id = rl_current.roller_sleeve_id
+            LEFT JOIN [roller_tracking].[site] s ON s.site_id = rl_current.from_site_id
+            LEFT JOIN [roller_tracking].[caster] c ON c.caster_id = rl_current.from_caster_id
+            LEFT JOIN [roller_tracking].[strand] st ON st.strand_id = rl_current.from_strand_id
+            WHERE rs.is_scrapped = 0
+        `;
+
+        const request = pool.request();
+        if (rollerType) {
+            query += " AND rs.roller_type = @rollerType";
+            request.input('rollerType', sql.NVarChar, rollerType);
+        }
+        if (rollerFunction) {
+            query += " AND (rs.roller_function = @rollerFunction OR rs.roller_function LIKE @rollerFunction + '%' OR @rollerFunction LIKE rs.roller_function + '%')";
+            request.input('rollerFunction', sql.NVarChar, rollerFunction);
+        }
+        if (assetId) {
+            query += " AND rs.roller_sleeve_id = @assetId";
+            request.input('assetId', sql.Int, assetId);
+        }
+        if (date) {
+            query += " AND CAST(rl_current.received_at AS DATE) = @date";
+            request.input('date', sql.Date, date);
+        }
+
+        query += " ORDER BY rl_current.received_at DESC, rs.roller_sleeve_id";
+
+        const result = await request.query(query);
+        res.json({ success: true, assets: result.recordset });
+    } catch (err) {
+        console.error('Error in /api/view/assets:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 app.get('/api/assets', async (req, res) => {
     try {
         const pool = await getPool();
@@ -983,6 +1071,152 @@ app.post('/api/events', async (req, res) => {
             .query('INSERT INTO [roller_tracking].[Events] (AssetID, PageID, EventType, EventData, UserID) VALUES (@aid, @pid, @etype, @edata, @uid)');
         res.json({ success: true });
     } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Update lifecycle record (for REF and WS roles)
+app.post('/api/admin/update-lifecycle', async (req, res) => {
+    try {
+        const {
+            lifecycleId,
+            incomingDetails,
+            processDetails,
+            dispatchDetails,
+            userId
+        } = req.body;
+
+        const pool = await getPool();
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        try {
+            const request = new sql.Request(transaction);
+            request.input('lifecycleId', sql.BigInt, lifecycleId);
+
+            let updateFields = [];
+
+            // 1. Incoming Details
+            // Helper to process field updates safely
+            const processFields = (data, fieldMap) => {
+                for (let [dbCol, [prop, type]] of Object.entries(fieldMap)) {
+                    if (data.hasOwnProperty(prop)) {
+                        let val = data[prop];
+
+                        // Identify the type category
+                        // Parameterized types like Decimal(10,3) often store their name in type.type.name 
+                        // or provide it via toString().
+                        const typeName = type.name || (type.type && type.type.name) || (typeof type.toString === 'function' ? type.toString() : '');
+                        const typeStr = typeName.toLowerCase();
+
+                        const isNumeric = typeStr.includes('decimal') ||
+                            typeStr.includes('int') ||
+                            typeStr.includes('numeric') ||
+                            typeStr.includes('float') ||
+                            typeStr.includes('real');
+                        const isDateTime = typeStr.includes('datetime');
+
+                        // If it's a numeric or date field and the value is empty/null/invalid, use NULL
+                        if ((isNumeric || isDateTime) && (val === '' || val === undefined || val === null)) {
+                            val = null;
+                        } else if (isNumeric && val !== null && val !== '') {
+                            // For numeric fields, try to convert to a real number
+                            const num = parseFloat(val);
+                            val = isNaN(num) ? null : num;
+                        }
+
+                        request.input(prop, type, val);
+                        updateFields.push(`${dbCol} = @${prop}`);
+                    }
+                }
+            };
+
+            if (incomingDetails) {
+                processFields(incomingDetails, {
+                    from_site_id: ['fromSiteId', sql.Int],
+                    from_caster_id: ['fromCasterId', sql.Int],
+                    from_strand_id: ['fromStrandId', sql.Int],
+                    from_position_id: ['fromPositionId', sql.Int],
+                    from_segment_id: ['fromSegmentId', sql.Int],
+                    received_at: ['receivedAt', sql.DateTime],
+                    received_config: ['receivedConfig', sql.Int],
+                    from_roller_position: ['fromRollerPosition', sql.Int],
+                    received_diameter_a: ['receivedDiameterA', sql.Decimal(10, 3)],
+                    received_diameter_b: ['receivedDiameterB', sql.Decimal(10, 3)],
+                    received_journal_flag: ['receivedJournalFlag', sql.Bit],
+                    received_journal_a: ['receivedJournalA', sql.Decimal(10, 3)],
+                    received_journal_b: ['receivedJournalB', sql.Decimal(10, 3)],
+                    breakout_flag: ['breakoutFlag', sql.Bit],
+                    tonnage: ['tonnage', sql.Int],
+                    received_axle_id: ['receivedAxleId', sql.Int]
+                });
+            }
+
+            if (processDetails) {
+                processFields(processDetails, {
+                    is_skin_cut: ['isSkinCut', sql.Bit],
+                    is_cladded: ['isCladded', sql.Bit],
+                    cladding_wire_id: ['claddingWireId', sql.Int],
+                    roller_scrap_flag: ['rollerScrapFlag', sql.Bit],
+                    roller_scrap_reason: ['rollerScrapReason', sql.NVarChar],
+                    drive_rotary_joint_change_flag: ['driveRotaryJointChangeFlag', sql.Bit],
+                    idle_rotary_joint_change_o_flag: ['idleRotaryJointChangeOFlag', sql.Bit],
+                    idle_rotary_joint_change_d_flag: ['idleRotaryJointChangeDFlag', sql.Bit]
+                });
+
+                // Satisfy ck_rl_scrap_consistency: if scrap flag is true, stage must be 'SCRAPPED'
+                if (processDetails.rollerScrapFlag === true || processDetails.rollerScrapFlag === 1) {
+                    request.input('scrapStage', sql.NVarChar, 'SCRAPPED');
+                    updateFields.push(`process_stage = @scrapStage`);
+                    // Also record scrap date if not already set
+                    updateFields.push(`scrapped_at = GETDATE()`);
+                }
+            }
+
+            if (dispatchDetails) {
+                processFields(dispatchDetails, {
+                    to_site_id: ['toSiteId', sql.Int],
+                    to_caster_id: ['toCasterId', sql.Int],
+                    to_strand_id: ['toStrandId', sql.Int],
+                    to_position_id: ['toPositionId', sql.Int],
+                    to_segment_id: ['toSegmentId', sql.Int],
+                    to_roller_position: ['toRollerPosition', sql.Int],
+                    dispatched_config: ['dispatchedConfig', sql.Int],
+                    dispatched_axle_id: ['dispatchedAxleId', sql.Int],
+                    dispatched_axle_straight_flag: ['dispatchedAxleStraightFlag', sql.Bit],
+                    dispatched_journal_flag: ['dispatchedJournalFlag', sql.Bit],
+                    dispatched_journal_a: ['dispatchedJournalA', sql.Decimal(10, 3)],
+                    dispatched_journal_b: ['dispatchedJournalB', sql.Decimal(10, 3)]
+                });
+            }
+
+            if (req.body.outgoingDetails) {
+                processFields(req.body.outgoingDetails, {
+                    dispatched_diameter_a: ['outDiaA', sql.Decimal(10, 3)],
+                    dispatched_diameter_b: ['outDiaB', sql.Decimal(10, 3)],
+                    diff_diameter_a: ['diffDiaA', sql.Decimal(10, 3)],
+                    diff_diameter_b: ['diffDiaB', sql.Decimal(10, 3)],
+                    processed_at: ['processedAt', sql.DateTime]
+                });
+            }
+
+            if (updateFields.length > 0) {
+                request.input('userId', sql.Int, userId);
+                updateFields.push(`updated_at = GETDATE()`);
+                updateFields.push(`updated_by_user_id = @userId`);
+
+                const query = `UPDATE [roller_tracking].[roller_lifecycle] SET ${updateFields.join(', ')} WHERE lifecycle_id = @lifecycleId`;
+                await request.query(query);
+            }
+
+            await transaction.commit();
+            res.json({ success: true, message: 'Lifecycle updated successfully' });
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
+    } catch (err) {
+        console.error('Update error:', err);
         res.status(500).json({ success: false, error: err.message });
     }
 });

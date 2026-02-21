@@ -120,9 +120,9 @@ const InsertProcessing = () => {
                                                 {row.roller_sleeve_id}
                                             </a>
                                         </td>
-                                        <td>{row.from_caster_id || 'N/A'}</td>
-                                        <td>{row.from_strand_id || 'N/A'}</td>
-                                        <td>{row.from_site_id || 'N/A'}</td>
+                                        <td>{row.caster_name || 'N/A'}</td>
+                                        <td>{row.strand_no || 'N/A'}</td>
+                                        <td>{row.site_name || 'N/A'}</td>
                                         <td>{row.received_at ? new Date(row.received_at).toLocaleDateString() : 'N/A'}</td>
                                         <td>{row.skin_cut_count || 0}</td>
                                         <td>{row.cladded_count || 0}</td>

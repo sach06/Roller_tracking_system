@@ -106,6 +106,7 @@ const ProcessingDetails = () => {
     const showWiresUsed = cladding === 'Yes';
     const showOutgoingDetails = sleeveScrap === 'No' || sleeveScrap === '';
     const showJournalFields = rollerType === 'Roller' && haveJournal === 'Yes';
+    const showRotaryJoints = rollerType === 'Roller' && (skinPassCut === 'Yes' || (skinPassCut === 'No' && sleeveScrap === 'No'));
 
     const validateForm = () => {
         const newErrors = {};
@@ -201,8 +202,7 @@ const ProcessingDetails = () => {
             const response = await axios.post('/api/processing/update', formData);
             if (response.data.success) {
                 alert('Processing data submitted successfully!');
-                resetProcessingFields(); // Silent reset
-                fetchLifecycleData(); // Refresh data
+                navigate('/insert-processing');
             }
         } catch (err) {
             console.error('Submit Error:', err);
@@ -274,9 +274,16 @@ const ProcessingDetails = () => {
                         <label>Skin pass count</label>
                         <div className="count-value">{lifecycleData.skin_cut_count || 0}</div>
                     </div>
-                    <div className="count-box">
+                    <div className={`count-box ${lifecycleData.cladded_count >= 5 ? 'critical-count' : ''}`}>
                         <label>Cladding count</label>
-                        <div className="count-value">{lifecycleData.cladded_count || 0}</div>
+                        <div className={`count-value ${lifecycleData.cladded_count >= 5 ? 'text-red' : ''}`} style={{ color: lifecycleData.cladded_count >= 5 ? '#ef4444' : 'inherit' }}>
+                            {lifecycleData.cladded_count || 0}
+                        </div>
+                        {lifecycleData.cladded_count >= 5 && (
+                            <div className="warning-text" style={{ color: '#ef4444', fontSize: '11px', marginTop: '5px', fontWeight: '600', lineHeight: '1.2' }}>
+                                Max cladding possible is 5. Please check and scrap the roller/sleeve.
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -381,10 +388,13 @@ const ProcessingDetails = () => {
                         <select
                             value={skinPassCut}
                             onChange={(e) => {
-                                setSkinPassCut(e.target.value);
-                                if (e.target.value === 'Yes') {
+                                const val = e.target.value;
+                                setSkinPassCut(val);
+                                if (val === 'Yes') {
                                     setSleeveScrap('');
                                     setCladding('');
+                                } else if (val === 'No' && sleeveScrap === 'No') {
+                                    setCladding('Yes');
                                 }
                             }}
                             className={errors.skinPassCut ? 'error' : ''}
@@ -401,7 +411,13 @@ const ProcessingDetails = () => {
                             <label>Sleeve/Roller Scrap(Y/N)</label>
                             <select
                                 value={sleeveScrap}
-                                onChange={(e) => setSleeveScrap(e.target.value)}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setSleeveScrap(val);
+                                    if (val === 'No' && skinPassCut === 'No') {
+                                        setCladding('Yes');
+                                    }
+                                }}
                                 className={errors.sleeveScrap ? 'error' : ''}
                             >
                                 <option value="">-- Select --</option>
@@ -465,41 +481,51 @@ const ProcessingDetails = () => {
                 )}
 
                 {/* Rotary Joint Changes - Roller Only */}
-                {rollerType === 'Roller' && showCladdingField && (
+                {showRotaryJoints && (
                     <div className="section-row">
                         <div className="field-group pink-field">
                             <label>drive roller: Rotary joint change (Y/N)</label>
                             <select
                                 value={driveRotaryJointChange}
-                                onChange={(e) => setDriveRotaryJointChange(e.target.value)}
+                                onChange={(e) => {
+                                    setDriveRotaryJointChange(e.target.value);
+                                    if (e.target.value !== 'Yes') {
+                                        setIdleRotaryJointChangeOp('');
+                                        setIdleRotaryJointChangeDrive('');
+                                    }
+                                }}
                             >
                                 <option value="">-- Select --</option>
                                 <option value="Yes">Yes</option>
                                 <option value="No">No</option>
                             </select>
                         </div>
-                        <div className="field-group pink-field">
-                            <label>Idle: Rotary joint change operator side (Y/N)</label>
-                            <select
-                                value={idleRotaryJointChangeOp}
-                                onChange={(e) => setIdleRotaryJointChangeOp(e.target.value)}
-                            >
-                                <option value="">-- Select --</option>
-                                <option value="Yes">Yes</option>
-                                <option value="No">No</option>
-                            </select>
-                        </div>
-                        <div className="field-group pink-field">
-                            <label>Idle: Rotary joint change drive side (Y/N)</label>
-                            <select
-                                value={idleRotaryJointChangeDrive}
-                                onChange={(e) => setIdleRotaryJointChangeDrive(e.target.value)}
-                            >
-                                <option value="">-- Select --</option>
-                                <option value="Yes">Yes</option>
-                                <option value="No">No</option>
-                            </select>
-                        </div>
+                        {driveRotaryJointChange === 'Yes' && (
+                            <>
+                                <div className="field-group pink-field">
+                                    <label>Idle: Rotary joint change operator side (Y/N)</label>
+                                    <select
+                                        value={idleRotaryJointChangeOp}
+                                        onChange={(e) => setIdleRotaryJointChangeOp(e.target.value)}
+                                    >
+                                        <option value="">-- Select --</option>
+                                        <option value="Yes">Yes</option>
+                                        <option value="No">No</option>
+                                    </select>
+                                </div>
+                                <div className="field-group pink-field">
+                                    <label>Idle: Rotary joint change drive side (Y/N)</label>
+                                    <select
+                                        value={idleRotaryJointChangeDrive}
+                                        onChange={(e) => setIdleRotaryJointChangeDrive(e.target.value)}
+                                    >
+                                        <option value="">-- Select --</option>
+                                        <option value="Yes">Yes</option>
+                                        <option value="No">No</option>
+                                    </select>
+                                </div>
+                            </>
+                        )}
                     </div>
                 )}
 
