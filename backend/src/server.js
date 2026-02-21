@@ -676,6 +676,16 @@ app.post('/api/rollers/register', async (req, res) => {
         await transaction.begin();
 
         try {
+            // Check if rollerId already exists
+            const existing = await transaction.request()
+                .input('rollerId', sql.Int, parseInt(data.rollerId))
+                .query('SELECT roller_sleeve_id FROM [roller_tracking].[roller_sleeve] WHERE roller_sleeve_id = @rollerId');
+
+            if (existing.recordset.length > 0) {
+                await transaction.rollback();
+                return res.status(400).json({ success: false, error: 'The ID already exist. Please use new ID.' });
+            }
+
             // 1. Insert into roller_sleeve
             await transaction.request()
                 .input('rollerId', sql.Int, parseInt(data.rollerId))

@@ -25,32 +25,36 @@
 
 .filter-group {
     flex: 1;
-    min-width: 180px;
+    min-width: 220px;
+    max-width: 350px;
+    /* Prevent oversized fields */
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
 .filter-label {
-    padding: 5px 10px;
+    padding: 6px 12px;
     border-radius: 4px;
     font-weight: 600;
     font-size: 0.8em;
     letter-spacing: 0.02em;
-    color: #1F2937;
+    color: var(--color-brand-dark, #003A70);
+    background-color: #EBF3FF;
+    /* Uniform light blue */
+    border-left: 3px solid var(--color-brand, #005CA9);
+    margin-bottom: 2px;
 }
 
-.filter-label.pink {
-    background-color: #DBEAFE;
+/* Maintain class variants but unify look as requested */
+.filter-label.pink,
+.filter-label.white {
+    background-color: #EBF3FF;
     color: var(--color-brand-dark, #003A70);
     border-left: 3px solid var(--color-brand, #005CA9);
-}
-
-.filter-label.white {
-    background-color: #F9FAFB;
-    border: 1px solid #E5E7EB;
-    border-left: 3px solid #9CA3AF;
-    color: #374151;
+    border-right: none;
+    border-top: none;
+    border-bottom: none;
 }
 
 .filter-group select {

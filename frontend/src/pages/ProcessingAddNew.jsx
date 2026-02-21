@@ -144,8 +144,13 @@ const ProcessingAddNew = () => {
                     <div className="field-group pink-field">
                         <label>Roller Type: {rollerType}</label>
                         <select value={rollerType} onChange={(e) => {
-                            setRollerType(e.target.value);
-                            setRollerFunction('');
+                            const val = e.target.value;
+                            setRollerType(val);
+                            if (val === 'Sleeve') {
+                                setRollerFunction('Idle');
+                            } else {
+                                setRollerFunction('');
+                            }
                             setErrors({});
                         }}>
                             <option value="Roller">Roller</option>
@@ -159,6 +164,7 @@ const ProcessingAddNew = () => {
                             value={rollerFunction}
                             onChange={(e) => setRollerFunction(e.target.value)}
                             className={errors.rollerFunction ? 'error' : ''}
+                            disabled={rollerType === 'Sleeve'}
                         >
                             <option value="">-- Select --</option>
                             {rollerType === 'Roller' && <option value="Drive">Drive roll</option>}
@@ -181,14 +187,8 @@ const ProcessingAddNew = () => {
                 </div>
 
                 {/* --- Outgoing Details Box --- */}
-                <div className="outgoing-details-box" style={{
-                    border: '1px solid #E5E7EB',
-                    borderRadius: '8px',
-                    padding: '20px',
-                    marginTop: '20px',
-                    backgroundColor: '#FAFAFA'
-                }}>
-                    <div className="section-header" style={{ marginBottom: '15px', color: '#6B7280', fontSize: '1rem' }}>Outgoing details</div>
+                <div className="registration-outgoing-box">
+                    <div className="section-header" style={{ marginBottom: '15px' }}>Outgoing details</div>
 
                     {rollerType === 'Sleeve' && (
                         <div className="section-row">

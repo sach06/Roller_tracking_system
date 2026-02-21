@@ -59,8 +59,13 @@ const ViewAssets = () => {
                         <select
                             value={rollerType}
                             onChange={(e) => {
-                                setRollerType(e.target.value);
-                                setDriveType('');
+                                const val = e.target.value;
+                                setRollerType(val);
+                                if (val === 'Sleeve') {
+                                    setDriveType('Idle');
+                                } else {
+                                    setDriveType('');
+                                }
                                 setShowTable(false);
                             }}
                         >
@@ -79,6 +84,7 @@ const ViewAssets = () => {
                                 setDriveType(e.target.value);
                                 setShowTable(false);
                             }}
+                            disabled={rollerType === 'Sleeve'}
                         >
                             <option value="">-- Select --</option>
                             {rollerType === 'Roller' ? (

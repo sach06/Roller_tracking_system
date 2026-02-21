@@ -95,50 +95,42 @@
 /* ── Field groups ──────────────────────── */
 .field-group {
     flex: 1;
-    min-width: 180px;
+    min-width: 220px;
+    max-width: 350px;
+    /* Prevent fields from becoming too wide */
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
 .field-group label {
-    padding: 5px 10px;
+    padding: 6px 12px;
     border-radius: 4px;
     font-weight: 600;
     font-size: 0.8em;
     letter-spacing: 0.02em;
-    color: #1F2937;
-    background: none;
+    color: var(--color-brand-dark, #003A70);
+    background-color: #EBF3FF;
+    /* Uniform light blue */
+    border-left: 3px solid var(--color-brand, #005CA9);
+    margin-bottom: 2px;
 }
 
-/* Required (pink) → SMS brand tint */
-.pink-field label {
-    background-color: #DBEAFE;
+/* Consistent labels for all types as requested by user */
+.pink-field label,
+.red-field label,
+.gray-field label,
+.white-field label {
+    background-color: #EBF3FF;
     color: var(--color-brand-dark, #003A70);
     border-left: 3px solid var(--color-brand, #005CA9);
 }
 
-/* Mandatory (red) → deeper blue */
-.red-field label {
-    background-color: #BFDBFE;
-    color: var(--color-brand-dark, #003A70);
-    border-left: 3px solid var(--color-brand-dark, #003A70);
-    font-weight: 700;
-}
-
-/* Read-only (gray) */
+/* Optional: Slight tint for truly disabled/gray fields but keep header blue as requested */
 .gray-field label {
     background-color: #F3F4F6;
-    color: #6B7280;
+    color: var(--color-gray, #6B7280);
     border-left: 3px solid #D1D5DB;
-}
-
-/* Editable (white) */
-.white-field label {
-    background-color: #F9FAFB;
-    border: 1px solid #E5E7EB;
-    border-left: 3px solid #9CA3AF;
-    color: #374151;
 }
 
 .field-group select,
@@ -180,15 +172,19 @@
     display: block;
 }
 
-.readonly-value {
+.readonly-value,
+.readonly-field {
     padding: 8px 10px;
-    border: 1px solid #E5E7EB;
+    border: 1px solid #D1D5DB;
+    /* Match standard input border */
     border-radius: 4px;
     font-size: 0.9em;
     background-color: #F9FAFB;
     color: #374151;
     font-weight: 600;
-    min-height: 36px;
+    min-height: 38px;
+    display: flex;
+    align-items: center;
 }
 
 .count-display {
@@ -202,13 +198,13 @@
     color: var(--color-brand-dark, #003A70);
 }
 
-.readonly-field {
-    background-color: #F9FAFB;
+/* ── Container for manual entry on register page ── */
+.registration-outgoing-box {
     border: 1px solid #E5E7EB;
-    padding: 8px 10px;
-    border-radius: 4px;
-    font-weight: 600;
-    color: #374151;
+    border-radius: 8px;
+    padding: 24px;
+    margin-top: 24px;
+    background-color: #FAFAFA;
 }
 
 /* ── Checkboxes ────────────────────────── */

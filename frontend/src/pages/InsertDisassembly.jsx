@@ -322,8 +322,13 @@ const InsertDisassembly = () => {
                     <div className="field-group pink-field">
                         <label>Roller Type: {rollerType}</label>
                         <select value={rollerType} onChange={(e) => {
-                            setRollerType(e.target.value);
-                            setDriveType('');
+                            const val = e.target.value;
+                            setRollerType(val);
+                            if (val === 'Sleeve') {
+                                setDriveType('Idle');
+                            } else {
+                                setDriveType('');
+                            }
                         }}>
                             <option value="Roller">Roller</option>
                             <option value="Sleeve">Sleeve</option>
@@ -336,6 +341,7 @@ const InsertDisassembly = () => {
                             value={driveType}
                             onChange={(e) => setDriveType(e.target.value)}
                             className={errors.driveType ? 'error' : ''}
+                            disabled={rollerType === 'Sleeve'}
                         >
                             <option value="">-- Select --</option>
                             {rollerType === 'Roller' && <option value="Drive">Drive roll</option>}

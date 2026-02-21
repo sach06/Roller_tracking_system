@@ -53,8 +53,13 @@ const InsertProcessing = () => {
                         <select
                             value={rollerType}
                             onChange={(e) => {
-                                setRollerType(e.target.value);
-                                setDriveType('');
+                                const val = e.target.value;
+                                setRollerType(val);
+                                if (val === 'Sleeve') {
+                                    setDriveType('Idle');
+                                } else {
+                                    setDriveType('');
+                                }
                                 setShowTable(false);
                             }}
                         >
@@ -70,6 +75,7 @@ const InsertProcessing = () => {
                         <select
                             value={driveType}
                             onChange={(e) => setDriveType(e.target.value)}
+                            disabled={rollerType === 'Sleeve'}
                         >
                             <option value="">-- Select --</option>
                             {rollerType === 'Roller' && <option value="Drive">Drive roll</option>}
