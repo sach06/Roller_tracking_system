@@ -906,11 +906,12 @@ app.get('/api/ws/sleeves', async (req, res) => {
     try {
         const pool = await getPool();
         const result = await pool.request()
-            .query(`SELECT rl.lifecycle_id, rl.roller_sleeve_id,
-                           rl.from_caster_id, c.caster_name,
-                           rl.from_strand_id, st.strand_no,
-                           rl.from_site_id, s.site_name,
-                           rl.received_axle_id, rl.received_at, rl.processed_at
+            .query(`SELECT rl.dispatched_axle_id AS received_axle_id,
+                           MAX(rl.lifecycle_id) as lifecycle_id,
+                           MAX(rl.from_caster_id) as from_caster_id, MAX(c.caster_name) as caster_name,
+                           MAX(rl.from_strand_id) as from_strand_id, MAX(st.strand_no) as strand_no,
+                           MAX(rl.from_site_id) as from_site_id, MAX(s.site_name) as site_name,
+                           MAX(rl.received_at) as received_at, MAX(rl.processed_at) as processed_at
                     FROM [roller_tracking].[roller_lifecycle] rl
                     JOIN [roller_tracking].[roller_sleeve] rs ON rs.roller_sleeve_id = rl.roller_sleeve_id
                     LEFT JOIN [roller_tracking].[caster] c ON c.caster_id = rl.from_caster_id
@@ -919,8 +920,49 @@ app.get('/api/ws/sleeves', async (req, res) => {
                     WHERE rl.process_stage = 'PROCESSED'
                       AND rs.roller_type = 'Sleeve'
                       AND rs.is_scrapped = 0
-                    ORDER BY rl.processed_at DESC`);
+                      AND rl.dispatched_axle_id IS NOT NULL
+                    GROUP BY rl.dispatched_axle_id
+                    ORDER BY MAX(rl.processed_at) DESC`);
         res.json({ success: true, sleeves: result.recordset });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Get axle details for dispatch
+app.get('/api/ws/axle-details/:axleId', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const axleId = req.params.axleId;
+
+        const result = await pool.request()
+            .input('axleId', sql.Int, axleId)
+            .query(`SELECT 
+                        MAX(rl.dispatched_diameter_a) AS dispatched_diameter_a,
+                        MAX(rl.dispatched_diameter_b) AS dispatched_diameter_b,
+                        MAX(rl.dispatched_config) AS dispatched_config
+                    FROM [roller_tracking].[roller_lifecycle] rl
+                    JOIN [roller_tracking].[roller_sleeve] rs ON rs.roller_sleeve_id = rl.roller_sleeve_id
+                    WHERE rl.process_stage = 'PROCESSED'
+                      AND rs.roller_type = 'Sleeve'
+                      AND rl.dispatched_axle_id = @axleId`);
+
+        const sleevesResult = await pool.request()
+            .input('axleId', sql.Int, axleId)
+            .query(`SELECT rl.roller_sleeve_id
+                    FROM [roller_tracking].[roller_lifecycle] rl
+                    JOIN [roller_tracking].[roller_sleeve] rs ON rs.roller_sleeve_id = rl.roller_sleeve_id
+                    WHERE rl.process_stage = 'PROCESSED'
+                      AND rs.roller_type = 'Sleeve'
+                      AND rl.dispatched_axle_id = @axleId`);
+
+        if (result.recordset.length > 0) {
+            const data = result.recordset[0];
+            data.sleeve_ids = sleevesResult.recordset.map(r => r.roller_sleeve_id);
+            res.json({ success: true, details: data });
+        } else {
+            res.status(404).json({ success: false, error: 'Axle details not found' });
+        }
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }
@@ -933,8 +975,8 @@ app.post('/api/ws/dispatch', async (req, res) => {
         const data = req.body;
         const toInt = (v) => { const n = parseInt(v); return isNaN(n) ? null : n; };
 
-        await pool.request()
-            .input('lifecycleId', sql.BigInt, data.lifecycleId)
+        let query = '';
+        let request = pool.request()
             .input('toCasterId', sql.Int, toInt(data.toCasterId))
             .input('toStrandId', sql.Int, toInt(data.toStrandId))
             .input('toPositionId', sql.Int, toInt(data.toPositionId))
@@ -942,20 +984,42 @@ app.post('/api/ws/dispatch', async (req, res) => {
             .input('toRollerPosition', sql.Int, toInt(data.toRollerPosition))
             .input('toConfiguration', sql.Int, toInt(data.toConfiguration))
             .input('toSiteId', sql.Int, toInt(data.toSiteId))
-            .input('updatedByUserId', sql.Int, toInt(data.userId))
-            .query(`UPDATE [roller_tracking].[roller_lifecycle]
-                    SET process_stage = 'DISPATCHED',
-                        dispatched_at = SYSDATETIME(),
-                        updated_at = SYSDATETIME(),
-                        updated_by_user_id = @updatedByUserId,
-                        to_caster_id = @toCasterId,
-                        to_strand_id = @toStrandId,
-                        to_position_id = @toPositionId,
-                        to_segment_id = @toSegmentId,
-                        to_roller_position = @toRollerPosition,
-                        to_site_id = @toSiteId,
-                        dispatched_config = @toConfiguration
-                    WHERE lifecycle_id = @lifecycleId`);
+            .input('updatedByUserId', sql.Int, toInt(data.userId));
+
+        if (data.axleId && data.axleId !== 'undefined' && data.axleId !== null) {
+            request.input('axleId', sql.Int, toInt(data.axleId));
+            query = `UPDATE [roller_tracking].[roller_lifecycle]
+                     SET process_stage = 'DISPATCHED',
+                         dispatched_at = SYSDATETIME(),
+                         updated_at = SYSDATETIME(),
+                         updated_by_user_id = @updatedByUserId,
+                         to_caster_id = @toCasterId,
+                         to_strand_id = @toStrandId,
+                         to_position_id = @toPositionId,
+                         to_segment_id = @toSegmentId,
+                         to_roller_position = @toRollerPosition,
+                         to_site_id = @toSiteId,
+                         dispatched_config = @toConfiguration
+                     WHERE dispatched_axle_id = @axleId 
+                       AND process_stage = 'PROCESSED'`;
+        } else {
+            request.input('lifecycleId', sql.BigInt, data.lifecycleId);
+            query = `UPDATE [roller_tracking].[roller_lifecycle]
+                     SET process_stage = 'DISPATCHED',
+                         dispatched_at = SYSDATETIME(),
+                         updated_at = SYSDATETIME(),
+                         updated_by_user_id = @updatedByUserId,
+                         to_caster_id = @toCasterId,
+                         to_strand_id = @toStrandId,
+                         to_position_id = @toPositionId,
+                         to_segment_id = @toSegmentId,
+                         to_roller_position = @toRollerPosition,
+                         to_site_id = @toSiteId,
+                         dispatched_config = @toConfiguration
+                     WHERE lifecycle_id = @lifecycleId`;
+        }
+
+        await request.query(query);
 
         res.json({ success: true, message: 'Dispatched successfully' });
     } catch (err) {
@@ -1019,6 +1083,168 @@ app.get('/api/view/assets', async (req, res) => {
         res.json({ success: true, assets: result.recordset });
     } catch (err) {
         console.error('Error in /api/view/assets:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Get DISPATCHED rollers for workshop update
+app.get('/api/update/dispatched-rollers', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const { rollerFunction } = req.query;
+
+        let query = `
+            SELECT 
+                rs.roller_sleeve_id,
+                rs.roller_type,
+                rs.roller_function,
+                rl_current.from_site_id,
+                s.site_name,
+                rl_current.from_caster_id,
+                c.caster_name,
+                rl_current.from_strand_id,
+                st.strand_no,
+                rl_current.received_at,
+                rl_current.dispatched_at,
+                rl_current.lifecycle_id,
+                rl_current.process_stage,
+                (SELECT SUM(CAST(is_skin_cut AS INT)) FROM [roller_tracking].[roller_lifecycle] WHERE roller_sleeve_id = rs.roller_sleeve_id) AS skin_cut_count,
+                (SELECT SUM(CAST(is_cladded AS INT)) FROM [roller_tracking].[roller_lifecycle] WHERE roller_sleeve_id = rs.roller_sleeve_id) AS cladded_count
+            FROM [roller_tracking].[roller_sleeve] rs
+            JOIN [roller_tracking].[roller_lifecycle] rl_current
+                ON rs.roller_sleeve_id = rl_current.roller_sleeve_id
+            LEFT JOIN [roller_tracking].[site] s ON s.site_id = rl_current.from_site_id
+            LEFT JOIN [roller_tracking].[caster] c ON c.caster_id = rl_current.from_caster_id
+            LEFT JOIN [roller_tracking].[strand] st ON st.strand_id = rl_current.from_strand_id
+            WHERE rs.is_scrapped = 0
+              AND rs.roller_type = 'Roller'
+              AND rl_current.process_stage = 'DISPATCHED'
+        `;
+
+        const request = pool.request();
+        if (rollerFunction) {
+            query += " AND (rs.roller_function = @rollerFunction OR rs.roller_function LIKE @rollerFunction + '%' OR @rollerFunction LIKE rs.roller_function + '%')";
+            request.input('rollerFunction', sql.NVarChar, rollerFunction);
+        }
+
+        query += " ORDER BY rl_current.dispatched_at DESC, rs.roller_sleeve_id";
+
+        const result = await request.query(query);
+        res.json({ success: true, assets: result.recordset });
+    } catch (err) {
+        console.error('Error in /api/update/dispatched-rollers:', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Get DISPATCHED axles for workshop update
+app.get('/api/update/dispatched-axles', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const result = await pool.request()
+            .query(`SELECT rl.dispatched_axle_id AS received_axle_id,
+                           MAX(rl.lifecycle_id) as lifecycle_id,
+                           MAX(rl.to_caster_id) as caster_id, MAX(c.caster_name) as caster_name,
+                           MAX(rl.to_strand_id) as strand_id, MAX(st.strand_no) as strand_no,
+                           MAX(rl.to_site_id) as site_id, MAX(s.site_name) as site_name,
+                           MAX(rl.dispatched_at) as dispatched_at
+                    FROM [roller_tracking].[roller_lifecycle] rl
+                    JOIN [roller_tracking].[roller_sleeve] rs ON rs.roller_sleeve_id = rl.roller_sleeve_id
+                    LEFT JOIN [roller_tracking].[caster] c ON c.caster_id = rl.to_caster_id
+                    LEFT JOIN [roller_tracking].[strand] st ON st.strand_id = rl.to_strand_id
+                    LEFT JOIN [roller_tracking].[site] s ON s.site_id = rl.to_site_id
+                    WHERE rl.process_stage = 'DISPATCHED'
+                      AND rs.roller_type = 'Sleeve'
+                      AND rs.is_scrapped = 0
+                      AND rl.dispatched_axle_id IS NOT NULL
+                    GROUP BY rl.dispatched_axle_id
+                    ORDER BY MAX(rl.dispatched_at) DESC`);
+        res.json({ success: true, axles: result.recordset });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Get axle details for update
+app.get('/api/update/axle-details/:axleId', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const axleId = req.params.axleId;
+
+        const result = await pool.request()
+            .input('axleId', sql.Int, axleId)
+            .query(`SELECT 
+                        MAX(rl.lifecycle_id) as lifecycle_id,
+                        MAX(rl.dispatched_diameter_a) AS dispatched_diameter_a,
+                        MAX(rl.dispatched_diameter_b) AS dispatched_diameter_b,
+                        MAX(rl.dispatched_config) AS dispatched_config,
+                        MAX(rl.to_caster_id) AS to_caster_id,
+                        MAX(rl.to_strand_id) AS to_strand_id,
+                        MAX(rl.to_position_id) AS to_position_id,
+                        MAX(rl.to_segment_id) AS to_segment_id,
+                        MAX(rl.to_roller_position) AS to_roller_position,
+                        MAX(rl.to_site_id) AS to_site_id,
+                        MAX(rs.roller_function) AS roller_function
+                    FROM [roller_tracking].[roller_lifecycle] rl
+                    JOIN [roller_tracking].[roller_sleeve] rs ON rs.roller_sleeve_id = rl.roller_sleeve_id
+                    WHERE rl.process_stage = 'DISPATCHED'
+                      AND rs.roller_type = 'Sleeve'
+                      AND rl.dispatched_axle_id = @axleId`);
+
+        const sleevesResult = await pool.request()
+            .input('axleId', sql.Int, axleId)
+            .query(`SELECT rl.roller_sleeve_id
+                    FROM [roller_tracking].[roller_lifecycle] rl
+                    JOIN [roller_tracking].[roller_sleeve] rs ON rs.roller_sleeve_id = rl.roller_sleeve_id
+                    WHERE rl.process_stage = 'DISPATCHED'
+                      AND rs.roller_type = 'Sleeve'
+                      AND rl.dispatched_axle_id = @axleId`);
+
+        if (result.recordset.length > 0 && result.recordset[0].lifecycle_id) {
+            const data = result.recordset[0];
+            data.sleeve_ids = sleevesResult.recordset.map(r => r.roller_sleeve_id);
+            res.json({ success: true, details: data });
+        } else {
+            res.status(404).json({ success: false, error: 'Axle details not found' });
+        }
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Update dispatched axle from workshop
+app.post('/api/update/axle-dispatch', async (req, res) => {
+    try {
+        const pool = await getPool();
+        const data = req.body;
+        const toInt = (v) => { const n = parseInt(v); return isNaN(n) ? null : n; };
+
+        await pool.request()
+            .input('axleId', sql.Int, toInt(data.axleId))
+            .input('toCasterId', sql.Int, toInt(data.toCasterId))
+            .input('toStrandId', sql.Int, toInt(data.toStrandId))
+            .input('toPositionId', sql.Int, toInt(data.toPositionId))
+            .input('toSegmentId', sql.Int, toInt(data.toSegmentId))
+            .input('toRollerPosition', sql.Int, toInt(data.toRollerPosition))
+            .input('toConfiguration', sql.Int, toInt(data.toConfiguration))
+            .input('toSiteId', sql.Int, toInt(data.toSiteId))
+            .input('updatedByUserId', sql.Int, toInt(data.userId))
+            .query(`UPDATE [roller_tracking].[roller_lifecycle]
+                     SET updated_at = SYSDATETIME(),
+                         updated_by_user_id = @updatedByUserId,
+                         to_caster_id = @toCasterId,
+                         to_strand_id = @toStrandId,
+                         to_position_id = @toPositionId,
+                         to_segment_id = @toSegmentId,
+                         to_roller_position = @toRollerPosition,
+                         to_site_id = @toSiteId,
+                         dispatched_config = @toConfiguration
+                     WHERE dispatched_axle_id = @axleId 
+                       AND process_stage = 'DISPATCHED'`);
+
+        res.json({ success: true, message: 'Updated successfully' });
+    } catch (err) {
+        console.error('Update axle dispatch error:', err);
         res.status(500).json({ success: false, error: err.message });
     }
 });

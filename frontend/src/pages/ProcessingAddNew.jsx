@@ -49,7 +49,7 @@ const ProcessingAddNew = () => {
 
     const resetForm = () => {
         setRollerId('');
-        setRollerFunction('');
+        setRollerFunction(rollerType === 'Sleeve' ? 'Idle' : '');
         setOutDiameterA('');
         setOutDiameterB('');
         setOutConfiguration('');

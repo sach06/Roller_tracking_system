@@ -150,7 +150,7 @@ const ScrapRoller = () => {
     };
 
     const resetForm = () => {
-        setDriveType('');
+        setDriveType(rollerType === 'Sleeve' ? 'Idle' : '');
         setRollerId('');
         setScrapReason('');
         setScrapDate(new Date().toISOString().split('T')[0]);

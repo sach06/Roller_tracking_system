@@ -3,9 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import './ProcessingDetails.css';
 
-const WSAxleDetails = () => {
+const UpdateWSAxleDetails = () => {
     const navigate = useNavigate();
-    const { lifecycleId, axleId } = useParams();
+    const { axleId } = useParams();
 
     const [lifecycleData, setLifecycleData] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -31,7 +31,7 @@ const WSAxleDetails = () => {
         const user = JSON.parse(localStorage.getItem('user'));
         fetchLifecycleData();
         fetchCasters(user?.user_id);
-    }, [lifecycleId, axleId]);
+    }, [axleId]);
 
     useEffect(() => {
         if (toCasterId) fetchStrands(toCasterId);
@@ -50,9 +50,21 @@ const WSAxleDetails = () => {
 
     const fetchLifecycleData = async () => {
         try {
-            const response = await axios.get(`/api/ws/axle-details/${axleId}`);
+            const response = await axios.get(`/api/update/axle-details/${axleId}`);
             if (response.data.success) {
-                setLifecycleData(response.data.details);
+                const data = response.data.details;
+                setLifecycleData(data);
+
+                // Pre-fill destination fields
+                setToCasterId(data.to_caster_id || '');
+                if (data.to_caster_id) await fetchStrands(data.to_caster_id);
+                setToStrandId(data.to_strand_id || '');
+                if (data.to_strand_id) await fetchSegmentPositions(data.to_strand_id);
+                setToPositionId(data.to_position_id || '');
+                if (data.to_position_id) await fetchSegmentIds(data.to_position_id);
+                setToSegmentId(data.to_segment_id || '');
+                setToRollerPosition(data.to_roller_position || '');
+                setToConfiguration(data.dispatched_config || '');
             }
             setLoading(false);
         } catch (err) {
@@ -109,8 +121,7 @@ const WSAxleDetails = () => {
         try {
             const user = JSON.parse(localStorage.getItem('user'));
             const siteRow = casterOptions.find(c => String(c.caster_id) === String(toCasterId));
-            const response = await axios.post('/api/ws/dispatch', {
-                lifecycleId,
+            const response = await axios.post('/api/update/axle-dispatch', {
                 axleId,
                 toCasterId,
                 toStrandId,
@@ -122,9 +133,8 @@ const WSAxleDetails = () => {
                 userId: user?.user_id
             });
             if (response.data.success) {
-                alert('Sleeve/Axle dispatched successfully!');
-                resetDestinationFields(); // Silent reset
-                navigate('/ws-axle'); // Redirect to workshop list
+                alert('Sleeve/Axle update successfully saved!');
+                navigate(-1); // Redirect back to list
             }
         } catch (err) {
             alert('Error: ' + (err.response?.data?.error || err.message));
@@ -132,19 +142,9 @@ const WSAxleDetails = () => {
         setShowConfirmDialog(false);
     };
 
-    const resetDestinationFields = () => {
-        setToCasterId('');
-        setToStrandId('');
-        setToPositionId('');
-        setToSegmentId('');
-        setToRollerPosition('');
-        setToConfiguration('');
-        setErrors({});
-    };
-
     const handleCancel = () => {
-        if (window.confirm('Clear dispatch destination?')) {
-            resetDestinationFields();
+        if (window.confirm('Discard changes and return?')) {
+            navigate(-1);
         }
     };
 
@@ -153,7 +153,7 @@ const WSAxleDetails = () => {
 
     return (
         <div className="processing-details">
-            <h2 className="page-title">Sleeve at Workshop — Dispatch</h2>
+            <h2 className="page-title">Update Dispatched Axle</h2>
 
             <div className="form-container">
                 {/* Header */}
@@ -197,7 +197,7 @@ const WSAxleDetails = () => {
                 </div>
 
                 {/* Dispatch Destination — EDITABLE (pink) */}
-                <div className="section-header">Dispatch destination</div>
+                <div className="section-header">Dispatch destination (Update)</div>
                 <div className="section-row">
                     <div className="field-group pink-field">
                         <label>To Caster ID</label>
@@ -211,7 +211,7 @@ const WSAxleDetails = () => {
                         <label>To Strand ID</label>
                         <select value={toStrandId} onChange={(e) => setToStrandId(e.target.value)} disabled={!toCasterId} className={errors.toStrandId ? 'error' : ''}>
                             <option value="">-- Select --</option>
-                            {strandOptions.map((s, i) => <option key={i} value={s.strand_id}>{s.strand_no}</option>)}
+                            {strandOptions.map((s, i) => <option key={s.strand_id}>{s.strand_no}</option>)}
                         </select>
                         {errors.toStrandId && <span className="error-text">{errors.toStrandId}</span>}
                     </div>
@@ -259,14 +259,14 @@ const WSAxleDetails = () => {
                 <div className="action-buttons">
                     <button className="btn btn-back" onClick={() => navigate(-1)}>Back</button>
                     <button className="btn btn-cancel" onClick={handleCancel}>Cancel</button>
-                    <button className="btn btn-submit" onClick={handleSubmit}>Submit</button>
+                    <button className="btn btn-submit" onClick={handleSubmit}>Update</button>
                 </div>
             </div>
 
             {showConfirmDialog && (
                 <div className="modal-overlay">
                     <div className="modal-dialog">
-                        <p>Confirm dispatch of axle <strong>{axleId}</strong>?</p>
+                        <p>Confirm updating dispatch location for axle <strong>{axleId}</strong>?</p>
                         <div className="modal-buttons">
                             <button className="btn btn-cancel" onClick={() => setShowConfirmDialog(false)}>Cancel</button>
                             <button className="btn btn-submit" onClick={confirmSubmit}>Confirm</button>
@@ -278,4 +278,4 @@ const WSAxleDetails = () => {
     );
 };
 
-export default WSAxleDetails;
+export default UpdateWSAxleDetails;

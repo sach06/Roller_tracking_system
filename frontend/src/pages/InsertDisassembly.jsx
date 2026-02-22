@@ -290,7 +290,7 @@ const InsertDisassembly = () => {
     const handleCancel = () => {
         if (window.confirm('Are you sure you want to clear the form?')) {
             // Reset all fields
-            setDriveType('');
+            setDriveType(rollerType === 'Sleeve' ? 'Idle' : '');
             setRollerId('');
             setIsNewRoller(false);
             setCasterId('');

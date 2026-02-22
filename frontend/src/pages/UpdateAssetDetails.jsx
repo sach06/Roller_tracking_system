@@ -333,7 +333,7 @@ const UpdateAssetDetails = () => {
 
     const canEditIncoming_Final = isWsRole ? false : refCanIncoming;
     const canEditProcess_Final = isWsRole ? false : refCanProcess;
-    const canEditOutgoing_Final = isWsRole ? true : refCanOutgoing;
+    const canEditOutgoing_Final = isWsRole ? false : refCanOutgoing;
     const canEditDispatch_Final = isWsRole ? true : refCanDispatch;
 
     // Show Dispatch section ONLY for Workshop roles, as per latest requirement
@@ -707,6 +707,29 @@ const UpdateAssetDetails = () => {
                     </div>
                 </div>
 
+                {rollerType === 'Roller' && (
+                    <div className="section-row">
+                        <div className={`field-group ${canEditOutgoing_Final ? 'pink-field' : 'gray-field'}`}>
+                            <label className="checkbox-label">
+                                <input type="checkbox" checked={dispatch.dispatchedJournalFlag} disabled={!canEditOutgoing_Final} onChange={(e) => setDispatch({ ...dispatch, dispatchedJournalFlag: e.target.checked })} />
+                                Have Journal
+                            </label>
+                        </div>
+                        {dispatch.dispatchedJournalFlag && (
+                            <>
+                                <div className={`field-group ${canEditOutgoing_Final ? 'white-field' : 'gray-field'}`}>
+                                    <label>Journal Diameter (A)</label>
+                                    <input type="number" step="0.001" value={dispatch.dispatchedJournalA} disabled={!canEditOutgoing_Final} onChange={(e) => setDispatch({ ...dispatch, dispatchedJournalA: e.target.value })} />
+                                </div>
+                                <div className={`field-group ${canEditOutgoing_Final ? 'white-field' : 'gray-field'}`}>
+                                    <label>Journal Diameter (B)</label>
+                                    <input type="number" step="0.001" value={dispatch.dispatchedJournalB} disabled={!canEditOutgoing_Final} onChange={(e) => setDispatch({ ...dispatch, dispatchedJournalB: e.target.value })} />
+                                </div>
+                            </>
+                        )}
+                    </div>
+                )}
+
                 {/* 4. Dispatch Destination */}
                 {showDispatchSection && (
                     <>
@@ -785,29 +808,6 @@ const UpdateAssetDetails = () => {
                                 </select>
                             </div>
                         </div>
-
-                        {rollerType === 'Roller' && (
-                            <div className="section-row">
-                                <div className={`field-group ${canEditDispatch_Final ? 'white-field' : 'gray-field'}`}>
-                                    <label className="checkbox-label">
-                                        <input type="checkbox" checked={dispatch.dispatchedJournalFlag} disabled={!canEditDispatch_Final} onChange={(e) => setDispatch({ ...dispatch, dispatchedJournalFlag: e.target.checked })} />
-                                        Have Journal
-                                    </label>
-                                </div>
-                                {dispatch.dispatchedJournalFlag && (
-                                    <>
-                                        <div className={`field-group ${canEditDispatch_Final ? 'white-field' : 'gray-field'}`}>
-                                            <label>Journal Diameter (A)</label>
-                                            <input type="number" step="0.001" value={dispatch.dispatchedJournalA} disabled={!canEditDispatch_Final} onChange={(e) => setDispatch({ ...dispatch, dispatchedJournalA: e.target.value })} />
-                                        </div>
-                                        <div className={`field-group ${canEditDispatch_Final ? 'white-field' : 'gray-field'}`}>
-                                            <label>Journal Diameter (B)</label>
-                                            <input type="number" step="0.001" value={dispatch.dispatchedJournalB} disabled={!canEditDispatch_Final} onChange={(e) => setDispatch({ ...dispatch, dispatchedJournalB: e.target.value })} />
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        )}
 
                         {rollerType === 'Sleeve' && (
                             <div className="section-row">

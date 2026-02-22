@@ -68,13 +68,12 @@ const WSAxle = () => {
                                 <th>Caster ID</th>
                                 <th>Strand ID</th>
                                 <th>Incoming Customer</th>
-                                <th>Received At</th>
                                 <th>Processed At</th>
                             </tr>
                         </thead>
                         <tbody>
                             {tableData.length === 0 ? (
-                                <tr><td colSpan="6" style={{ textAlign: 'center' }}>No processed sleeves found</td></tr>
+                                <tr><td colSpan="5" style={{ textAlign: 'center' }}>No processed sleeves found</td></tr>
                             ) : (
                                 tableData.map((row, index) => (
                                     <tr key={index}>
@@ -87,7 +86,6 @@ const WSAxle = () => {
                                         <td>{row.caster_name || 'N/A'}</td>
                                         <td>{row.strand_no || 'N/A'}</td>
                                         <td>{row.site_name || 'N/A'}</td>
-                                        <td>{row.received_at ? new Date(row.received_at).toLocaleDateString() : 'N/A'}</td>
                                         <td>{row.processed_at ? new Date(row.processed_at).toLocaleDateString() : 'N/A'}</td>
                                     </tr>
                                 ))
