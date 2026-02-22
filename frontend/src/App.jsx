@@ -16,6 +16,8 @@ import WSAxleDetails from './pages/WSAxleDetails';
 import AssetDetailsView from './pages/AssetDetailsView';
 import UpdateAssetDetails from './pages/UpdateAssetDetails';
 import UpdateWSAxleDetails from './pages/UpdateWSAxleDetails';
+import UpdateWSAxle from './pages/UpdateWSAxle';
+import UpdateWSRoller from './pages/UpdateWSRoller';
 import './index.css';
 
 const RoleRedirect = () => {
@@ -56,6 +58,8 @@ function App() {
                     <Route path="/asset-view-details/:rollerId/:lifecycleId" element={<AssetDetailsView />} />
                     <Route path="/update-asset-details/:rollerId/:lifecycleId" element={<UpdateAssetDetails />} />
                     <Route path="/update-ws-axle-details/:axleId" element={<UpdateWSAxleDetails />} />
+                    <Route path="/update-ws-roller" element={<UpdateWSRoller />} />
+                    <Route path="/update-ws-axle" element={<UpdateWSAxle />} />
                 </Route>
             </Routes>
         </BrowserRouter>

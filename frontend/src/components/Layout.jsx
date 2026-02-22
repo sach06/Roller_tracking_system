@@ -23,6 +23,8 @@ const Layout = () => {
             setOpenGroup('insert');
         } else if (location.pathname.startsWith('/scrap')) {
             setOpenGroup('scrap');
+        } else if (location.pathname.startsWith('/update')) {
+            setOpenGroup('update');
         }
     }, [location.pathname]);
 
@@ -39,14 +41,14 @@ const Layout = () => {
 
     const isInsertActive = location.pathname.startsWith('/insert') || location.pathname === '/processing-add-new';
     const isScrapActive = location.pathname.startsWith('/scrap');
+    const isUpdateActive = location.pathname.startsWith('/update');
 
     return (
         <div className="container">
             <aside className={`sidebar${!isSidebarOpen ? ' hidden' : ''}`}>
-                {/* Brand / Logo */}
-                <div className="sidebar-brand">
-                    <img src="/SMS_Logo.jpg" alt="SMS group" className="sidebar-logo" />
-                    <span className="sidebar-title">Roller Tracker</span>
+                {/* Navigation Hint */}
+                <div style={{ padding: '20px', fontSize: '14px', color: '#9CA3AF', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Click to navigate
                 </div>
 
                 <nav className="sidebar-nav">
@@ -91,15 +93,43 @@ const Layout = () => {
                     )}
 
                     {/* ---- UPDATE ---- */}
-                    <NavLink to="/update" className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>
-                        <span className="nav-icon">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                            </svg>
-                        </span>
-                        Update
-                    </NavLink>
+                    {(user.role_code === 'WS_ADMIN' || user.role_code === 'WS_OP') ? (
+                        <>
+                            <button
+                                className={`nav-group-btn${isUpdateActive ? ' active' : ''}`}
+                                onClick={() => toggleGroup('update')}
+                            >
+                                <span className="nav-icon">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                    </svg>
+                                </span>
+                                Update
+                                <span className={`chevron${openGroup === 'update' ? ' open' : ''}`}>›</span>
+                            </button>
+                            {openGroup === 'update' && (
+                                <div className="nav-sub">
+                                    <NavLink to="/update-ws-axle" className={({ isActive }) => 'nav-sub-link' + (isActive ? ' active' : '')}>
+                                        Axle
+                                    </NavLink>
+                                    <NavLink to="/update-ws-roller" className={({ isActive }) => 'nav-sub-link' + (isActive ? ' active' : '')}>
+                                        Roller
+                                    </NavLink>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <NavLink to="/update" className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>
+                            <span className="nav-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                </svg>
+                            </span>
+                            Update
+                        </NavLink>
+                    )}
 
                     {/* ---- VIEW ---- */}
                     <NavLink to="/view" className={({ isActive }) => 'nav-link' + (isActive ? ' active' : '')}>

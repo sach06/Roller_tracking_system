@@ -55,7 +55,6 @@ const Login = () => {
         <div className="login-container">
             {/* Left branding panel */}
             <div className="login-brand-panel">
-                <img src="/SMS_Logo.jpg" alt="SMS group" className="login-brand-logo" />
                 <h1 className="login-brand-title">Roller Tracking System</h1>
                 <p className="login-brand-subtitle">Workshop Management &amp; Quality Control</p>
             </div>
