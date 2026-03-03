@@ -64,7 +64,16 @@ app.get('/api/rollers/existing', async (req, res) => {
     try {
         const pool = await getPool();
         const { rollerType, rollerFunction } = req.query;
-        let query = 'SELECT roller_sleeve_id, roller_type, roller_function FROM [roller_tracking].[roller_sleeve] WHERE is_scrapped = 0';
+        let query = `
+            SELECT roller_sleeve_id, roller_type, roller_function 
+            FROM [roller_tracking].[roller_sleeve] 
+            WHERE is_scrapped = 0 
+            AND roller_sleeve_id NOT IN (
+                SELECT roller_sleeve_id 
+                FROM [roller_tracking].[roller_lifecycle] 
+                WHERE process_stage IN ('RECEIVED', 'PROCESSED')
+            )
+        `;
         const request = pool.request();
 
         if (rollerType) {
